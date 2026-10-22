@@ -1,0 +1,82 @@
+<!--
+  ============================================================================
+  index.html — A PÁGINA ÚNICA DO AGENDAPET WEB   (ticket: US01, e depois US10)
+  ============================================================================
+
+  O QUE É ESTE ARQUIVO
+  É o esqueleto da aplicação: toda a estrutura que o usuário enxerga. O CSS
+  (css/style.css) vai pintar este HTML e o JavaScript (js/app.js) vai
+  "conversar" com ele pelos ids dos elementos.
+
+  O QUE FAZER AQUI
+  Escrever o HTML SEMÂNTICO e ACESSÍVEL da tela. Nada de regra de negócio e
+  nada de estilo aqui: só estrutura. Escreva por cima destes comentários e
+  apague-os quando terminar cada parte.
+
+  A ESTRUTURA ESPERADA (siga o protótipo em "Prototipo da Tela")
+    <!DOCTYPE html>
+    <html lang="pt-BR" data-tema="claro">      <- o JS troca claro/escuro neste atributo
+      <head>   charset, viewport, title, description, favicon, CSS e <script type="module">
+      <body>
+        skip-link ("Ir para o conteúdo")
+        <header>  logo + título (h1) + relógio + botões (lembretes, tema) + <nav> com âncoras
+        <main>
+          lembrete (parágrafo de aviso, escondido)
+          coluna 1:  <section> Novo agendamento (formulário)  +  <aside> Serviços e preços
+          coluna 2:  <section> Agenda do dia  +  <section> Fechamento do dia  +  <aside> Atalhos
+        <footer>
+        toast (mensagem rápida, escondida)
+
+  REGRAS DE OURO
+  1) Um único <h1>. Os títulos das seções são <h2>, e os subtítulos <h3>.
+     Não pule níveis.
+  2) Todo campo de formulário tem <label for="..."> ligado ao id do campo.
+  3) Mensagens de erro ficam em um <p hidden> ao lado do campo e são ligadas
+     a ele com aria-describedby (o leitor de tela lê o erro junto com o campo).
+  4) Use <button type="button"> para ações e type="submit" só no envio do form.
+  5) Coloque novalidate no <form>: a validação é feita por você, em JS
+     (js/dominio/regras.js), para mostrar mensagens personalizadas.
+  6) Combine os ids com o que o JS vai procurar (document.getElementById).
+     Escolha nomes claros e NÃO os mude depois sem ajustar o JS.
+  7) O atributo "hidden" esconde o elemento; o JS o remove quando precisar mostrar.
+  8) Imagem decorativa leva alt="" ; imagem com significado leva alt descritivo.
+  9) Carregue o JS como módulo:  <script type="module" src="js/app.js"></script>
+     (sem "type=module", o import/export dos arquivos não funciona).
+
+  EXEMPLO GENÉRICO DE UM CAMPO COM ERRO (adapte para os seus campos):
+
+    <div class="campo">
+      <label class="campo__rotulo" for="nome">Nome do cliente</label>
+      <input class="campo__entrada" type="text" id="nome" name="nome"
+             autocomplete="name" required aria-describedby="erro-nome">
+      <p class="campo__erro" id="erro-nome" hidden></p>
+    </div>
+
+  EXEMPLO GENÉRICO DE UMA LISTA QUE O JS VAI PREENCHER:
+
+    <ul id="lista-itens"></ul>        <- começa vazia; o ui.js cria os <li>
+
+  EXEMPLO GENÉRICO DE UMA ÁREA DE STATUS (carregando / erro / vazio):
+
+    <div class="status" id="itens-status" role="status" hidden></div>
+
+  IDS QUE O JAVASCRIPT PRECISA ENCONTRAR (confira no Refinamento Técnico):
+    formulário e campos: form-agendamento, tutor, telefone, pet, especie,
+      servico, data, hora, domiciliar, observacoes, e (endereço) cep,
+      logradouro, numero, complemento, bairro, cidade, uf, grupo-endereco,
+      cep-status; aviso de feriado: feriado-aviso, feriado-texto,
+      feriado-confirmar; um erro-<campo> para cada campo validado.
+    catálogo: lista-servicos, servicos-status
+    agenda: data-agenda, busca, filtro-status, proximo, contador,
+      agenda-vazio, lista-agenda
+    fechamento: fechamento-data, fechamento-resumo, fechamento-servicos
+    dados: btn-exemplo, btn-exportar, btn-limpar, exportacao,
+      exportacao-texto, btn-copiar, btn-baixar
+    topo: relogio, btn-lembretes, btn-tema, lembrete, toast
+
+  COMO TESTAR
+  - Abra a página (npm start) e navegue só com o TAB: tudo precisa ser
+    alcançável e o foco precisa estar visível.
+  - Passe o validador de HTML do W3C e confira que não há título pulado.
+  ============================================================================
+-->
