@@ -1,82 +1,284 @@
-<!--
-  ============================================================================
-  index.html — A PÁGINA ÚNICA DO AGENDAPET WEB   (ticket: US01, e depois US10)
-  ============================================================================
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="claro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AgendaPet Web: painel de agendamentos e fechamento diário para o pet shop Patinhas &amp; Cia.">
+  <title>AgendaPet Web — Patinhas &amp; Cia</title>
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <!-- Skip link de acessibilidade para navegação por teclado -->
+  <a href="#conteudo" class="skip-link">Ir para o conteúdo</a>
 
-  O QUE É ESTE ARQUIVO
-  É o esqueleto da aplicação: toda a estrutura que o usuário enxerga. O CSS
-  (css/style.css) vai pintar este HTML e o JavaScript (js/app.js) vai
-  "conversar" com ele pelos ids dos elementos.
-
-  O QUE FAZER AQUI
-  Escrever o HTML SEMÂNTICO e ACESSÍVEL da tela. Nada de regra de negócio e
-  nada de estilo aqui: só estrutura. Escreva por cima destes comentários e
-  apague-os quando terminar cada parte.
-
-  A ESTRUTURA ESPERADA (siga o protótipo em "Prototipo da Tela")
-    <!DOCTYPE html>
-    <html lang="pt-BR" data-tema="claro">      <- o JS troca claro/escuro neste atributo
-      <head>   charset, viewport, title, description, favicon, CSS e <script type="module">
-      <body>
-        skip-link ("Ir para o conteúdo")
-        <header>  logo + título (h1) + relógio + botões (lembretes, tema) + <nav> com âncoras
-        <main>
-          lembrete (parágrafo de aviso, escondido)
-          coluna 1:  <section> Novo agendamento (formulário)  +  <aside> Serviços e preços
-          coluna 2:  <section> Agenda do dia  +  <section> Fechamento do dia  +  <aside> Atalhos
-        <footer>
-        toast (mensagem rápida, escondida)
-
-  REGRAS DE OURO
-  1) Um único <h1>. Os títulos das seções são <h2>, e os subtítulos <h3>.
-     Não pule níveis.
-  2) Todo campo de formulário tem <label for="..."> ligado ao id do campo.
-  3) Mensagens de erro ficam em um <p hidden> ao lado do campo e são ligadas
-     a ele com aria-describedby (o leitor de tela lê o erro junto com o campo).
-  4) Use <button type="button"> para ações e type="submit" só no envio do form.
-  5) Coloque novalidate no <form>: a validação é feita por você, em JS
-     (js/dominio/regras.js), para mostrar mensagens personalizadas.
-  6) Combine os ids com o que o JS vai procurar (document.getElementById).
-     Escolha nomes claros e NÃO os mude depois sem ajustar o JS.
-  7) O atributo "hidden" esconde o elemento; o JS o remove quando precisar mostrar.
-  8) Imagem decorativa leva alt="" ; imagem com significado leva alt descritivo.
-  9) Carregue o JS como módulo:  <script type="module" src="js/app.js"></script>
-     (sem "type=module", o import/export dos arquivos não funciona).
-
-  EXEMPLO GENÉRICO DE UM CAMPO COM ERRO (adapte para os seus campos):
-
-    <div class="campo">
-      <label class="campo__rotulo" for="nome">Nome do cliente</label>
-      <input class="campo__entrada" type="text" id="nome" name="nome"
-             autocomplete="name" required aria-describedby="erro-nome">
-      <p class="campo__erro" id="erro-nome" hidden></p>
+  <!-- Topo da aplicação com marca, relógio, controles e navegação -->
+  <header class="topo">
+    <div class="topo__marca">
+      <img src="img/logo.svg" alt="Logotipo da Patinhas &amp; Cia" width="40" height="40">
+      <div>
+        <span class="topo__loja">Patinhas &amp; Cia</span>
+        <h1 class="topo__titulo">AgendaPet Web</h1>
+      </div>
     </div>
 
-  EXEMPLO GENÉRICO DE UMA LISTA QUE O JS VAI PREENCHER:
+    <div class="topo__ferramentas">
+      <div class="relogio" id="relogio" aria-live="off">
+        <span class="relogio__rotulo">Agora:</span>
+        <span class="relogio__hora">--:--</span>
+      </div>
 
-    <ul id="lista-itens"></ul>        <- começa vazia; o ui.js cria os <li>
+      <button type="button" class="botao botao--secundario botao--pequeno" id="btn-lembretes" aria-pressed="true">
+        Pausar lembretes
+      </button>
 
-  EXEMPLO GENÉRICO DE UMA ÁREA DE STATUS (carregando / erro / vazio):
+      <button type="button" class="botao botao--secundario botao--pequeno" id="btn-tema">
+        Tema escuro
+      </button>
+    </div>
 
-    <div class="status" id="itens-status" role="status" hidden></div>
+    <nav class="nav topo__nav" aria-label="Navegação rápida">
+      <a href="#novo-agendamento" class="nav__link">Novo agendamento</a>
+      <a href="#agenda-dia" class="nav__link">Agenda do dia</a>
+      <a href="#fechamento-dia" class="nav__link">Fechamento</a>
+    </nav>
+  </header>
 
-  IDS QUE O JAVASCRIPT PRECISA ENCONTRAR (confira no Refinamento Técnico):
-    formulário e campos: form-agendamento, tutor, telefone, pet, especie,
-      servico, data, hora, domiciliar, observacoes, e (endereço) cep,
-      logradouro, numero, complemento, bairro, cidade, uf, grupo-endereco,
-      cep-status; aviso de feriado: feriado-aviso, feriado-texto,
-      feriado-confirmar; um erro-<campo> para cada campo validado.
-    catálogo: lista-servicos, servicos-status
-    agenda: data-agenda, busca, filtro-status, proximo, contador,
-      agenda-vazio, lista-agenda
-    fechamento: fechamento-data, fechamento-resumo, fechamento-servicos
-    dados: btn-exemplo, btn-exportar, btn-limpar, exportacao,
-      exportacao-texto, btn-copiar, btn-baixar
-    topo: relogio, btn-lembretes, btn-tema, lembrete, toast
+  <!-- Conteúdo principal com marcos semânticos e áreas bem definidas -->
+  <main class="principal" id="conteudo">
+    <!-- Aviso de lembrete de atendimento próximo -->
+    <p class="lembrete" id="lembrete" role="status" hidden></p>
 
-  COMO TESTAR
-  - Abra a página (npm start) e navegue só com o TAB: tudo precisa ser
-    alcançável e o foco precisa estar visível.
-  - Passe o validador de HTML do W3C e confira que não há título pulado.
-  ============================================================================
--->
+    <div class="painel">
+      <!-- Coluna 1: Formulário e Catálogo de Serviços -->
+      <div class="coluna coluna--form">
+        <!-- Área Principal 1: Novo agendamento -->
+        <section class="cartao" id="novo-agendamento" aria-labelledby="titulo-novo-agendamento">
+          <h2 class="cartao__titulo" id="titulo-novo-agendamento">Novo agendamento</h2>
+          <p class="cartao__subtitulo">Cadastre atendimentos na loja ou a domicílio.</p>
+
+          <form class="form" id="form-agendamento" novalidate>
+            <div class="linha">
+              <div class="campo campo--grande">
+                <label class="campo__rotulo" for="tutor">Nome do tutor</label>
+                <input class="campo__entrada" type="text" id="tutor" name="tutor" autocomplete="name" required aria-describedby="erro-tutor">
+                <p class="campo__erro" id="erro-tutor" hidden></p>
+              </div>
+
+              <div class="campo">
+                <label class="campo__rotulo" for="telefone">Telefone (com DDD)</label>
+                <input class="campo__entrada" type="tel" id="telefone" name="telefone" placeholder="(11) 99999-9999" autocomplete="tel" required aria-describedby="erro-telefone">
+                <p class="campo__erro" id="erro-telefone" hidden></p>
+              </div>
+            </div>
+
+            <div class="linha">
+              <div class="campo campo--grande">
+                <label class="campo__rotulo" for="pet">Nome do pet</label>
+                <input class="campo__entrada" type="text" id="pet" name="pet" required aria-describedby="erro-pet">
+                <p class="campo__erro" id="erro-pet" hidden></p>
+              </div>
+
+              <div class="campo">
+                <label class="campo__rotulo" for="especie">Espécie</label>
+                <select class="campo__entrada" id="especie" name="especie" required aria-describedby="erro-especie">
+                  <option value="">Selecione…</option>
+                  <option value="Cão">Cão</option>
+                  <option value="Gato">Gato</option>
+                  <option value="Outro">Outro</option>
+                </select>
+                <p class="campo__erro" id="erro-especie" hidden></p>
+              </div>
+            </div>
+
+            <div class="campo">
+              <label class="campo__rotulo" for="servico">Serviço</label>
+              <select class="campo__entrada" id="servico" name="servico" required aria-describedby="erro-servico">
+                <option value="">Selecione um serviço…</option>
+              </select>
+              <p class="campo__erro" id="erro-servico" hidden></p>
+            </div>
+
+            <div class="linha">
+              <div class="campo">
+                <label class="campo__rotulo" for="data">Data</label>
+                <input class="campo__entrada" type="date" id="data" name="data" required aria-describedby="erro-data">
+                <p class="campo__erro" id="erro-data" hidden></p>
+              </div>
+
+              <div class="campo">
+                <label class="campo__rotulo" for="hora">Horário</label>
+                <input class="campo__entrada" type="time" id="hora" name="hora" step="1800" required aria-describedby="erro-hora">
+                <p class="campo__erro" id="erro-hora" hidden></p>
+              </div>
+            </div>
+
+            <!-- Aviso dinâmico de feriados nacionais -->
+            <div class="aviso aviso--feriado" id="feriado-aviso" hidden>
+              <p class="aviso__texto" id="feriado-texto"></p>
+              <div class="campo campo--check">
+                <input type="checkbox" id="feriado-confirmar">
+                <label for="feriado-confirmar">Agendar mesmo assim</label>
+              </div>
+            </div>
+
+            <div class="campo campo--check">
+              <input type="checkbox" id="domiciliar" name="domiciliar">
+              <label for="domiciliar">Atendimento a domicílio</label>
+            </div>
+
+            <!-- Endereço completo para atendimentos a domicílio -->
+            <fieldset class="endereco" id="grupo-endereco" hidden>
+              <legend class="endereco__legenda">Endereço de atendimento</legend>
+
+              <div class="linha">
+                <div class="campo">
+                  <label class="campo__rotulo" for="cep">CEP</label>
+                  <input class="campo__entrada" type="text" id="cep" name="cep" placeholder="00000-000" maxlength="9" aria-describedby="cep-status erro-cep">
+                  <p class="campo__erro" id="erro-cep" hidden></p>
+                </div>
+
+                <div class="campo campo--grande">
+                  <label class="campo__rotulo" for="logradouro">Logradouro / Rua</label>
+                  <input class="campo__entrada" type="text" id="logradouro" name="logradouro" aria-describedby="erro-logradouro">
+                  <p class="campo__erro" id="erro-logradouro" hidden></p>
+                </div>
+              </div>
+
+              <div class="status" id="cep-status" role="status" hidden></div>
+
+              <div class="linha">
+                <div class="campo campo--pequeno">
+                  <label class="campo__rotulo" for="numero">Número</label>
+                  <input class="campo__entrada" type="text" id="numero" name="numero" aria-describedby="erro-numero">
+                  <p class="campo__erro" id="erro-numero" hidden></p>
+                </div>
+
+                <div class="campo">
+                  <label class="campo__rotulo" for="complemento">Complemento</label>
+                  <input class="campo__entrada" type="text" id="complemento" name="complemento">
+                </div>
+
+                <div class="campo">
+                  <label class="campo__rotulo" for="bairro">Bairro</label>
+                  <input class="campo__entrada" type="text" id="bairro" name="bairro" aria-describedby="erro-bairro">
+                  <p class="campo__erro" id="erro-bairro" hidden></p>
+                </div>
+              </div>
+
+              <div class="linha">
+                <div class="campo campo--grande">
+                  <label class="campo__rotulo" for="cidade">Cidade</label>
+                  <input class="campo__entrada" type="text" id="cidade" name="cidade" aria-describedby="erro-cidade">
+                  <p class="campo__erro" id="erro-cidade" hidden></p>
+                </div>
+
+                <div class="campo campo--pequeno">
+                  <label class="campo__rotulo" for="uf">UF</label>
+                  <input class="campo__entrada" type="text" id="uf" name="uf" maxlength="2" aria-describedby="erro-uf">
+                  <p class="campo__erro" id="erro-uf" hidden></p>
+                </div>
+              </div>
+            </fieldset>
+
+            <div class="campo">
+              <label class="campo__rotulo" for="observacoes">Observações</label>
+              <textarea class="campo__entrada" id="observacoes" name="observacoes" rows="3" placeholder="Alergias, temperamento, preferências..."></textarea>
+            </div>
+
+            <button type="submit" class="botao botao--principal botao--cheio">Salvar agendamento</button>
+          </form>
+        </section>
+
+        <!-- Aside: Catálogo de Serviços e Preços -->
+        <aside class="cartao" aria-labelledby="titulo-servicos">
+          <h2 class="cartao__titulo" id="titulo-servicos">Serviços e preços</h2>
+          <p class="cartao__subtitulo">Consulte o catálogo da loja.</p>
+          <div class="status" id="servicos-status" role="status" hidden></div>
+          <ul class="servicos" id="lista-servicos"></ul>
+        </aside>
+      </div>
+
+      <!-- Coluna 2: Agenda do Dia, Fechamento e Atalhos -->
+      <div class="coluna coluna--agenda">
+        <!-- Área Principal 2: Agenda do dia -->
+        <section class="cartao" id="agenda-dia" aria-labelledby="titulo-agenda">
+          <h2 class="cartao__titulo" id="titulo-agenda">Agenda do dia</h2>
+
+          <div class="filtros">
+            <div class="campo">
+              <label class="campo__rotulo" for="data-agenda">Data da agenda</label>
+              <input class="campo__entrada" type="date" id="data-agenda">
+            </div>
+
+            <div class="campo campo--busca">
+              <label class="campo__rotulo" for="busca">Buscar (tutor ou pet)</label>
+              <input class="campo__entrada" type="search" id="busca" placeholder="Pressione / para buscar">
+            </div>
+
+            <div class="campo">
+              <label class="campo__rotulo" for="filtro-status">Filtrar por status</label>
+              <select class="campo__entrada" id="filtro-status">
+                <option value="todos">Todos</option>
+                <option value="Agendado">Agendado</option>
+                <option value="Concluído">Concluído</option>
+                <option value="Cancelado">Cancelado</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="proximo" id="proximo" role="status">Próximo atendimento: nenhum agendamento próximo</div>
+          <p class="contador" id="contador">0 agendamentos encontrados</p>
+          <div class="vazio" id="agenda-vazio" hidden>Nenhum agendamento para este dia. Use o formulário para criar o primeiro.</div>
+          <ul class="agenda" id="lista-agenda"></ul>
+        </section>
+
+        <!-- Área Principal 3: Fechamento do dia -->
+        <section class="cartao" id="fechamento-dia" aria-labelledby="titulo-fechamento">
+          <h2 class="cartao__titulo" id="titulo-fechamento">Fechamento do dia</h2>
+          <p class="cartao__subtitulo" id="fechamento-data"></p>
+
+          <div class="resumo" id="fechamento-resumo"></div>
+
+          <h3 class="subtitulo">Por serviço</h3>
+          <div class="tabela-rolagem" id="fechamento-servicos"></div>
+
+          <div class="acoes" style="margin-top: 16px;">
+            <button type="button" class="botao botao--secundario" id="btn-exemplo">Carregar exemplo</button>
+            <button type="button" class="botao botao--secundario" id="btn-exportar">Exportar dados</button>
+            <button type="button" class="botao botao--perigo" id="btn-limpar">Limpar meus dados</button>
+          </div>
+
+          <div class="exportacao" id="exportacao" hidden>
+            <label class="campo__rotulo" for="exportacao-texto">JSON dos agendamentos:</label>
+            <textarea class="campo__entrada exportacao__texto" id="exportacao-texto" rows="6" readonly></textarea>
+            <div class="acoes">
+              <button type="button" class="botao botao--secundario botao--pequeno" id="btn-copiar">Copiar</button>
+              <button type="button" class="botao botao--secundario botao--pequeno" id="btn-baixar">Baixar JSON</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Aside: Atalhos de Teclado -->
+        <aside class="cartao cartao--atalhos" aria-labelledby="titulo-atalhos">
+          <h2 class="cartao__titulo" id="titulo-atalhos">Atalhos de teclado</h2>
+          <div class="atalhos">
+            <p><kbd>N</kbd> Novo agendamento (foca no campo Tutor)</p>
+            <p><kbd>/</kbd> Buscar na agenda</p>
+            <p><kbd>Esc</kbd> Limpar campo de busca</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <!-- Rodapé semântico -->
+  <footer class="rodape">
+    <p>AgendaPet Web — Patinhas &amp; Cia · Painel de Agendamentos</p>
+  </footer>
+
+  <!-- Notificação rápida flutuante -->
+  <div class="toast" id="toast" role="alert" aria-live="polite" hidden></div>
+</body>
+</html>
