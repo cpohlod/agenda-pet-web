@@ -7,6 +7,7 @@ import { formatarDataBR, formatarMoeda } from './regras.js';
 
 /**
  * Retorna uma nova lista ordenada por horário (e depois por protocolo).
+ * Utiliza o método sort de Array.
  * @param {Array} lista
  * @returns {Array}
  */
@@ -20,6 +21,7 @@ export function ordenarPorHora(lista = []) {
 
 /**
  * Filtra e ordena os atendimentos de um dia específico.
+ * Utiliza os métodos filter e sort de Array.
  * @param {Array} lista
  * @param {string} data ISO (AAAA-MM-DD)
  * @returns {Array}
@@ -32,9 +34,10 @@ export function agendamentosDoDia(lista = [], data) {
 
 /**
  * Filtra uma lista aplicando múltiplos critérios combinados (callbacks).
- * Exige que o item atenda a todos os critérios fornecidos.
+ * Exige que o item atenda a todos os critérios fornecidos (usando every).
+ * Utiliza os métodos filter e every de Array.
  * @param {Array} lista
- * @param  {...Function} criterios
+ * @param  {...Function} criterios Funções callback que recebem um item e retornam boolean
  * @returns {Array}
  */
 export function filtrarAgendamentos(lista = [], ...criterios) {
@@ -68,6 +71,7 @@ export const porBusca = (texto) => (item) => {
 
 /**
  * Encontra o primeiro atendimento 'Agendado' a partir da hora atual informada.
+ * Utiliza os métodos sort e find de Array.
  * @param {Array} listaDoDia
  * @param {string} horaAtual HH:MM
  * @returns {object|null}
@@ -83,37 +87,41 @@ export function proximoAtendimento(listaDoDia = [], horaAtual = '00:00') {
 
 /**
  * Calcula os totais e agrupamentos financeiros do dia para o fechamento.
- * @param {Array} lista
- * @param {string} data
- * @returns {object} Resumo com contadores e agrupamento
+ * Utiliza os métodos de Array: filter, map, reduce, sort, find, some e laço for...of.
+ * @param {Array} lista Lista completa de agendamentos
+ * @param {string} data Data ISO (AAAA-MM-DD)
+ * @param {string} [horaAtual='00:00'] Horário de corte para identificação do próximo atendimento
+ * @returns {object} Resumo consolidado do fechamento do dia
  */
-export function calcularFechamento(lista = [], data) {
+export function calcularFechamento(lista = [], data, horaAtual = '00:00') {
   const doDia = agendamentosDoDia(lista, data);
 
+  // filter: separa agendamentos por status
   const concluidos = doDia.filter((a) => a.status === STATUS.CONCLUIDO);
   const agendados = doDia.filter((a) => a.status === STATUS.AGENDADO);
   const cancelados = doDia.filter((a) => a.status === STATUS.CANCELADO);
 
-  // Faturamento = soma somente dos CONCLUÍDOS
-  const faturamento = concluidos.reduce(
-    (acc, a) => acc + (typeof a.calcularValor === 'function' ? a.calcularValor() : (a.servico?.preco || 0)),
-    0
+  // map + reduce: faturamento = soma exclusivamente dos CONCLUÍDOS
+  const valoresConcluidos = concluidos.map(
+    (a) => (typeof a.calcularValor === 'function' ? a.calcularValor() : (a.servico?.preco || 0))
   );
+  const faturamento = valoresConcluidos.reduce((acc, v) => acc + v, 0);
 
-  // A receber = soma dos ainda AGENDADOS
-  const aReceber = agendados.reduce(
-    (acc, a) => acc + (typeof a.calcularValor === 'function' ? a.calcularValor() : (a.servico?.preco || 0)),
-    0
+  // map + reduce: a receber = soma dos ainda AGENDADOS
+  const valoresAgendados = agendados.map(
+    (a) => (typeof a.calcularValor === 'function' ? a.calcularValor() : (a.servico?.preco || 0))
   );
+  const aReceber = valoresAgendados.reduce((acc, v) => acc + v, 0);
 
-  // Agrupamento por serviço (considera apenas serviços ativos do dia)
-  const mapaServicos = doDia.reduce((acc, a) => {
-    if (!a.ativo) return acc;
+  // laço for...of: agrupa quantidade e faturamento por serviço ativo no dia
+  const mapaServicos = {};
+  for (const a of doDia) {
+    if (!a.ativo) continue;
     const servicoId = a.servico?.id || 'outro';
     const servicoNome = a.servico?.nome || 'Serviço';
 
-    if (!acc[servicoId]) {
-      acc[servicoId] = {
+    if (!mapaServicos[servicoId]) {
+      mapaServicos[servicoId] = {
         id: servicoId,
         nome: servicoNome,
         quantidade: 0,
@@ -121,15 +129,14 @@ export function calcularFechamento(lista = [], data) {
       };
     }
 
-    acc[servicoId].quantidade += 1;
+    mapaServicos[servicoId].quantidade += 1;
     if (a.status === STATUS.CONCLUIDO) {
       const valor = typeof a.calcularValor === 'function' ? a.calcularValor() : (a.servico?.preco || 0);
-      acc[servicoId].faturado += valor;
+      mapaServicos[servicoId].faturado += valor;
     }
+  }
 
-    return acc;
-  }, {});
-
+  // sort: ordena os serviços da maior para a menor quantidade
   const porServico = Object.values(mapaServicos).sort((a, b) => b.quantidade - a.quantidade);
 
   return {
@@ -143,18 +150,20 @@ export function calcularFechamento(lista = [], data) {
     porServico,
     encerrado: doDia.length > 0 && agendados.length === 0,
     temDomiciliar: doDia.some((a) => a instanceof AgendamentoDomiciliar || a.domiciliar),
+    proximo: proximoAtendimento(doDia, horaAtual),
   };
 }
 
 /**
  * Monta as linhas de texto para impressão no terminal.
+ * Utiliza o laço for...of para iterar sobre a lista de serviços.
  * @param {object} fechamento Objeto resumo retornado por calcularFechamento
  * @returns {string[]}
  */
 export function montarLinhasRelatorio(fechamento) {
   const linhas = [];
   linhas.push('====================================================');
-  linhas.push(`  RELATÓRIO DE FECHAMENTO — PATINHAS & CIA`);
+  linhas.push('  RELATÓRIO DE FECHAMENTO — PATINHAS & CIA');
   linhas.push(`  Data: ${formatarDataBR(fechamento.data)}`);
   linhas.push('====================================================');
   linhas.push(`Total de atendimentos: ${fechamento.total}`);

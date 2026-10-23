@@ -30,6 +30,13 @@ Painel web responsivo e acessível para a gestão de agendamentos diários do pe
   - Atalhos globais de teclado: `N` para focar no primeiro campo do formulário, `/` para focar e selecionar a busca, e `Esc` para limpar a busca.
   - Acessibilidade total por teclado com `Tab`, `Enter` e `Espaço` em todos os controles interativos.
   - Filtro por status (`todos`, `Agendado`, `Concluído`, `Cancelado`), contador dinâmico de agendamentos e mensagem dedicada para lista vazia.
+- **US07 — Regras de Negócio, POO e Fechamento do Dia:**
+  - **Programação Orientada a Objetos (POO):** Classe base `Agendamento` e subclasse especializada `AgendamentoDomiciliar extends Agendamento`, com construtores, atributos (`endereco` no domiciliar), getters (`ativo`, `inicio`, `tipo`) e sobrescrita polimórfica de métodos (`calcularValor()` e `resumo()`). Uso significativo da palavra-chave `this` para vinculação de instância.
+  - **Prevenção de conflitos de agenda:** Método `conflitaCom(outro)` e função `temConflito(lista, novo)` impedindo agendamentos ativos simultâneos na mesma data e horário. Cancelamentos liberam o horário automaticamente.
+  - **Protocolo sequencial sem variáveis globais:** Implementação de gerador via closure (`criarGeradorProtocolo(ultimo)`), preservando o contador de forma privada no escopo léxico da função.
+  - **Função de alta ordem com callbacks:** `filtrarAgendamentos(lista, ...criterios)` recebe funções callback independentes (`porStatus`, `porBusca` ou predicados customizados) combinadas por meio de `every()`.
+  - **Fechamento consolidado do dia:** Cálculo de total de atendimentos, faturamento dos concluídos, valores a receber dos agendados, cancelados, agrupamento por serviço e próximo atendimento do dia. Utiliza métodos de array (`map`, `filter`, `find`, `every`, `some`, `reduce`, `sort`) e laços (`for...of`).
+  - **Atualização em tempo real na interface:** Renderização automática dos cartões de fechamento e da tabela de atendimentos por serviço, além do banner de próximo atendimento.
 
 ## Decisões de Negócio e Regras da Loja
 
@@ -39,6 +46,54 @@ Painel web responsivo e acessível para a gestão de agendamentos diários do pe
 - **Término do atendimento:** Nenhum serviço pode ultrapassar o horário de encerramento da loja. O horário inicial somado à duração do serviço escolhido (`duracaoMin`) deve terminar até as **18:00**.
 - **Datas:** Não é permitido registrar agendamentos em datas passadas. Se a data for hoje, o horário não pode ser anterior ao horário atual.
 - **Telefone:** Obrigatório com DDD (10 dígitos para fixo ou 11 dígitos para celular com nono dígito).
+
+### Atendimento Domiciliar e Taxa de Deslocamento (US04, US07)
+- **Serviços permitidos:** Apenas serviços com a flag `domiciliar: true` no catálogo podem ser realizados no domicílio do tutor (ex.: Banho e Tosa Completa aceitam; Adestramento é realizado apenas na loja física).
+- **Taxa de deslocamento:**
+  - Para a cidade sede da loja (**São Paulo**): taxa fixa de **R$ 15,00** adicionada ao valor do serviço.
+  - Para as demais cidades: taxa de **R$ 30,00** adicionada ao valor do serviço.
+- O cálculo do valor total do atendimento domiciliar é encapsulado pelo método `calcularValor()` da subclasse `AgendamentoDomiciliar`, invocando `super.calcularValor() + this.taxaDeslocamento()`.
+
+### Fechamento Financeiro do Dia (US07)
+- **Faturamento realizado:** Considera única e exclusivamente os agendamentos com status **Concluído** (`STATUS.CONCLUIDO`).
+- **Valores a receber:** Soma os valores dos atendimentos ainda pendentes com status **Agendado** (`STATUS.AGENDADO`).
+- Atendimentos com status **Cancelado** (`STATUS.CANCELADO`) não compõem faturamento nem valores a receber.
+- **Próximo atendimento:** Localiza o primeiro atendimento ativo com status `Agendado` a partir do horário atual (`HH:MM`).
+
+---
+
+## Declaração de Variáveis no JavaScript: const, let e var (e por que evitar var)
+
+No JavaScript moderno (ECMAScript 2015 / ES6 em diante), a forma como declaramos identificadores mudou fundamentalmente para garantir previsibilidade, imutabilidade e segurança no controle de escopo.
+
+### 1. `var` (Legado — Evite)
+- **Escopo de função (Function Scope):** Variáveis declaradas com `var` não respeitam blocos delimitados por chaves `{ ... }` (como estruturas `if`, `for`, `while` ou `switch`). Elas "vazam" para toda a função onde foram declaradas ou para o escopo global.
+- **Hoisting permissivo com `undefined`:** A declaração da variável é içada (*hoisted*) para o topo do seu escopo e imediatamente inicializada com `undefined`. Acessar a variável antes de sua declaração na linha de código não gera erro, mas retorna `undefined`, o que mascara bugs silenciosos.
+- **Permite redeclaração:** É possível redeclarar a mesma variável com `var` repetidas vezes no mesmo escopo sem nenhum erro (`var pet = 'Rex'; var pet = 'Thor';`), facilitando sobrescritas acidentais em arquivos extensos.
+- **Poluição do escopo global:** Variáveis com `var` declaradas fora de funções no navegador tornam-se propriedades diretas do objeto `window` (`window.pet`), aumentando o risco de conflitos entre bibliotecas e scripts.
+
+### 2. `let` (Moderno — Para variáveis mutáveis)
+- **Escopo de bloco (Block Scope):** A variável existe exclusivamente dentro do bloco `{ ... }` em que foi declarada.
+- **Hoisting com Zona Morta Temporal (TDZ — *Temporal Dead Zone*):** A variável é içada conceitualmente, mas **não** é inicializada. Tentar acessar uma variável declarada com `let` antes de sua linha de definição lança um erro fatal imediato (`ReferenceError: Cannot access 'nome' before initialization`), tornando a falha explícita.
+- **Não permite redeclaração:** Declarar duas vezes a mesma variável com `let` no mesmo escopo causa erro de sintaxe imediato (`SyntaxError: Identifier 'x' has already been declared`).
+- **Permite reatribuição:** O valor associado ao identificador pode ser alterado ao longo da execução (`let contador = 0; contador += 1;`).
+
+### 3. `const` (Moderno — Padrão recomendado)
+- **Escopo de bloco e TDZ:** Segue rigorosamente as mesmas regras de escopo de bloco e zona morta temporal que `let`.
+- **Declaração com inicialização obrigatória:** Não é permitido declarar uma constante sem fornecer seu valor inicial (`const total;` é inválido).
+- **Imutabilidade da vinculação (Binding):** O identificador não pode ser reatribuído (`const taxa = 15; taxa = 20;` lança `TypeError: Assignment to constant variable`).
+- **Atenção — Imutabilidade da referência vs. Conteúdo do objeto:** `const` impede a reatribuição da referência na memória, mas **não** congela as propriedades de objetos ou elementos de arrays. Um objeto instanciado com `const` pode ter suas propriedades modificadas. Para tornar um objeto imutável de forma profunda, utiliza-se `Object.freeze()`.
+
+### 4. Por que evitar `var`?
+1. **Prevenção de vazamento de escopo e bugs em laços:** Em laços `for (var i = 0; i < 3; i++)`, a variável `i` permanece acessível fora do laço. Em operações assíncronas (como callbacks de eventos ou timers), todas as iterações compartilham a mesma referência única de `i`. Com `let`, cada iteração cria uma vinculação de bloco nova e isolada.
+2. **Eliminação de bugs silenciosos:** O içamento com inicialização em `undefined` de `var` frequentemente gera lógicas condicionais enganosas onde o código executa com valores indefinidos sem disparar erros. Com `let` e `const`, erros de acesso precoce são detectados imediatamente via `ReferenceError`.
+3. **Evita colisões acidentais por redeclaração:** Com `const` e `let`, o compilador/interpretador rejeita duplicidade de declaração no mesmo escopo.
+4. **Regra de Ouro (Clean Code em JavaScript Moderno):**
+   - Use **`const` por padrão** para todas as declarações (variáveis, funções, classes, referências de objetos e arrays).
+   - Use **`let` apenas quando a variável estritamente precisar ser reatribuída** (ex.: contadores em acumuladores, variáveis de controle de fluxo de laços).
+   - **Nunca use `var`** em projetos modernos.
+
+---
 
 ## Como Rodar
 

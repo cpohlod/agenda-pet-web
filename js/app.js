@@ -22,6 +22,7 @@ import {
   somenteDigitos,
   formatarCep,
   acharFeriado,
+  horaAgora,
 } from './dominio/regras.js';
 
 import {
@@ -29,6 +30,8 @@ import {
   filtrarAgendamentos,
   porStatus,
   porBusca,
+  calcularFechamento,
+  proximoAtendimento,
 } from './dominio/fechamento.js';
 
 /**
@@ -65,15 +68,25 @@ function atualizarAgenda() {
     porBusca(estado.busca)
   );
 
+  const agora = new Date();
   const temFiltros = (estado.filtroStatus !== 'todos') || Boolean(estado.busca.trim());
 
   ui.renderizarAgenda(visiveis, {
     expandidos: estado.expandidos,
     selecionado: estado.selecionado,
     dataExibida: estado.dataAgenda,
-    agora: new Date(),
+    agora,
     temFiltros,
   });
+
+  // Atualiza banner do próximo atendimento (US06, US07)
+  const horaCorte = (estado.dataAgenda === hojeISO()) ? horaAgora(agora) : '00:00';
+  const proximo = proximoAtendimento(doDia, horaCorte);
+  ui.atualizarBannerProximo(proximo, agora);
+
+  // Calcula e renderiza o fechamento consolidado do dia (US07)
+  const resumo = calcularFechamento(estado.agenda, estado.dataAgenda, horaCorte);
+  ui.renderizarFechamento(resumo);
 }
 
 /**
@@ -86,13 +99,14 @@ function aoEnviarFormulario(evento) {
 
   const dados = ui.lerFormulario();
   const servico = estado.servicos.find((s) => s.id === dados.servicoId);
+  const agora = new Date();
   const confirmouFeriado = Boolean(ui.$('feriado-confirmar')?.checked);
 
   // Validação no submit com preventDefault (incluindo checagem de feriado)
   const erros = validarAgendamento(dados, servico, {
     feriado: estado.feriado,
     confirmouFeriado,
-    agora: new Date(),
+    agora,
   });
 
   if (Object.keys(erros).length > 0) {

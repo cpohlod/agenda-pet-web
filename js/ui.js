@@ -2,7 +2,7 @@
    ui.js — DESENHA NA TELA (DOM)   (tickets: US02, US03, US04, US05, US06, US09)
    ========================================================================== */
 
-import { formatarMoeda, formatarDataBR, estaAtrasado } from './dominio/regras.js';
+import { formatarMoeda, formatarDataBR, estaAtrasado, minutosAte } from './dominio/regras.js';
 import { STATUS } from './dominio/agendamento.js';
 
 /**
@@ -456,4 +456,108 @@ export function renderizarAgenda(lista = [], { expandidos = new Set(), seleciona
   });
 
   ul.replaceChildren(...itens);
+}
+
+
+/**
+ * Atualiza o banner com as informações do próximo atendimento do dia (US06, US07).
+ * @param {object|null} proximo Objeto de agendamento ou null
+ * @param {Date} [agora=new Date()] Instante atual de referência
+ */
+export function atualizarBannerProximo(proximo, agora = new Date()) {
+  const el = $('proximo');
+  if (!el) return;
+
+  if (!proximo) {
+    el.textContent = 'Próximo atendimento: nenhum agendamento próximo';
+    return;
+  }
+
+  const minutos = minutosAte(proximo.data, proximo.hora, agora);
+  const infoTempo = minutos > 0 ? ` (em ${minutos} min)` : minutos === 0 ? ' (agora)' : '';
+  const tipo = proximo.domiciliar ? ' [Domiciliar]' : '';
+
+  el.textContent = `Próximo atendimento: ${proximo.hora} — ${proximo.pet} (${proximo.tutor}) · ${proximo.servico?.nome || 'Serviço'}${tipo}${infoTempo}`;
+}
+
+/**
+ * Cria um card/item de resumo para o fechamento.
+ * @param {string} rotulo
+ * @param {string|number} valor
+ * @returns {HTMLElement}
+ */
+function criarItemResumo(rotulo, valor) {
+  return criar(
+    'div',
+    { classe: 'resumo__item' },
+    criar('span', { classe: 'resumo__rotulo', texto: rotulo }),
+    criar('span', { classe: 'resumo__valor', texto: String(valor) })
+  );
+}
+
+/**
+ * Renderiza os dados consolidados do fechamento do dia (US07).
+ * Monta os cartões de totais e a tabela de faturamento por serviço de forma segura via DOM.
+ * @param {object} fechamento Objeto gerado por calcularFechamento
+ */
+export function renderizarFechamento(fechamento) {
+  if (!fechamento) return;
+
+  const elData = $('fechamento-data');
+  if (elData) {
+    elData.textContent = fechamento.data
+      ? `Data: ${formatarDataBR(fechamento.data)} · Status: ${fechamento.encerrado ? 'Encerrado' : 'Em andamento'}`
+      : '';
+  }
+
+  const elResumo = $('fechamento-resumo');
+  if (elResumo) {
+    elResumo.replaceChildren(
+      criarItemResumo('Total de atendimentos', fechamento.total),
+      criarItemResumo('Concluídos', fechamento.concluidos),
+      criarItemResumo('Agendados', fechamento.agendados),
+      criarItemResumo('Cancelados', fechamento.cancelados),
+      criarItemResumo('Faturamento (concluídos)', formatarMoeda(fechamento.faturamento)),
+      criarItemResumo('A receber (agendados)', formatarMoeda(fechamento.aReceber))
+    );
+  }
+
+  const elServicos = $('fechamento-servicos');
+  if (elServicos) {
+    elServicos.replaceChildren();
+
+    if (!fechamento.porServico || fechamento.porServico.length === 0) {
+      elServicos.appendChild(
+        criar('p', { classe: 'vazio', texto: 'Nenhum atendimento ativo registrado para este dia.' })
+      );
+    } else {
+      const thead = criar(
+        'thead',
+        {},
+        criar(
+          'tr',
+          {},
+          criar('th', { texto: 'Serviço' }),
+          criar('th', { texto: 'Qtd' }),
+          criar('th', { texto: 'Faturado' })
+        )
+      );
+
+      const tbody = criar('tbody');
+      for (const item of fechamento.porServico) {
+        tbody.appendChild(
+          criar(
+            'tr',
+            {},
+            criar('td', { texto: item.nome }),
+            criar('td', { texto: `${item.quantidade} un` }),
+            criar('td', { texto: formatarMoeda(item.faturado) })
+          )
+        );
+      }
+
+      const tabela = criar('table', { classe: 'tabela' }, thead, tbody);
+      elServicos.appendChild(tabela);
+    }
+  }
 }

@@ -35,6 +35,7 @@ import {
   porBusca,
   calcularFechamento,
   proximoAtendimento,
+  montarLinhasRelatorio,
 } from '../js/dominio/fechamento.js';
 
 const servicoBanho = new Servico({
@@ -283,4 +284,168 @@ test('acharFeriado identifica feriado e validarAgendamento exige confirmação e
     confirmouFeriado: true,
   });
   assert.equal(Object.keys(errosComConfirmacao).length, 0);
+});
+
+test('POO: método conflitaCom compara instâncias ativas na mesma data e hora', () => {
+  const ag1 = new Agendamento({
+    protocolo: 'AP-0001',
+    tutor: 'Mariana',
+    telefone: '(11) 98888-7777',
+    pet: 'Thor',
+    especie: 'Cão',
+    servico: servicoBanho,
+    data: '2026-10-25',
+    hora: '09:00',
+    status: STATUS.AGENDADO,
+  });
+
+  const ag2 = new Agendamento({
+    protocolo: 'AP-0002',
+    tutor: 'Carlos',
+    telefone: '(11) 97777-6666',
+    pet: 'Luna',
+    especie: 'Cão',
+    servico: servicoBanho,
+    data: '2026-10-25',
+    hora: '09:00',
+    status: STATUS.AGENDADO,
+  });
+
+  const agOutroHorario = new Agendamento({
+    protocolo: 'AP-0003',
+    tutor: 'Sônia',
+    telefone: '(11) 96666-5555',
+    pet: 'Zeca',
+    especie: 'Gato',
+    servico: servicoBanho,
+    data: '2026-10-25',
+    hora: '10:00',
+    status: STATUS.AGENDADO,
+  });
+
+  // Não conflita consigo mesmo
+  assert.equal(ag1.conflitaCom(ag1), false);
+
+  // Conflita com outro ativo na mesma data e hora
+  assert.equal(ag1.conflitaCom(ag2), true);
+
+  // Não conflita com outro em horário diferente
+  assert.equal(ag1.conflitaCom(agOutroHorario), false);
+
+  // Se ag1 for cancelado, não gera conflito
+  ag1.alterarStatus(STATUS.CANCELADO);
+  assert.equal(ag1.conflitaCom(ag2), false);
+});
+
+test('POO: resumo e enderecoCompleto em Agendamento e AgendamentoDomiciliar', () => {
+  const ag = new Agendamento({
+    protocolo: 'AP-0001',
+    tutor: 'Mariana',
+    telefone: '(11) 98888-7777',
+    pet: 'Thor',
+    especie: 'Cão',
+    servico: servicoBanho,
+    data: '2026-10-25',
+    hora: '09:00',
+  });
+  assert.equal(ag.resumo(), 'AP-0001 — Thor (Mariana) · Banho às 09:00');
+
+  const agDom = new AgendamentoDomiciliar({
+    protocolo: 'AP-0002',
+    tutor: 'Carlos',
+    telefone: '(11) 97777-6666',
+    pet: 'Luna',
+    especie: 'Cão',
+    servico: servicoBanho,
+    data: '2026-10-25',
+    hora: '10:00',
+    endereco: {
+      logradouro: 'Av Paulista',
+      numero: '100',
+      complemento: 'Apto 12',
+      bairro: 'Bela Vista',
+      cidade: 'São Paulo',
+      uf: 'SP',
+      cep: '01310-200',
+    },
+  });
+
+  assert.equal(agDom.resumo(), 'AP-0002 — Luna (Carlos) · Banho às 10:00 [Domiciliar (São Paulo)]');
+  assert.equal(
+    agDom.enderecoCompleto(),
+    'Av Paulista, 100 - Apto 12 - Bela Vista - São Paulo/SP - CEP 01310-200'
+  );
+});
+
+test('proximoAtendimento retorna o próximo agendado ou null', () => {
+  const lista = [
+    new Agendamento({
+      protocolo: 'AP-0001',
+      tutor: 'Tutor 1',
+      telefone: '(11) 91111-2222',
+      pet: 'Pet 1',
+      especie: 'Cão',
+      servico: servicoBanho,
+      data: '2026-10-25',
+      hora: '09:00',
+      status: STATUS.CONCLUIDO,
+    }),
+    new Agendamento({
+      protocolo: 'AP-0002',
+      tutor: 'Tutor 2',
+      telefone: '(11) 92222-3333',
+      pet: 'Pet 2',
+      especie: 'Cão',
+      servico: servicoBanho,
+      data: '2026-10-25',
+      hora: '10:30',
+      status: STATUS.AGENDADO,
+    }),
+    new Agendamento({
+      protocolo: 'AP-0003',
+      tutor: 'Tutor 3',
+      telefone: '(11) 93333-4444',
+      pet: 'Pet 3',
+      especie: 'Cão',
+      servico: servicoBanho,
+      data: '2026-10-25',
+      hora: '14:00',
+      status: STATUS.AGENDADO,
+    }),
+  ];
+
+  // Às 08:00, o próximo ativo é o das 10:30 (09:00 está concluído)
+  const p1 = proximoAtendimento(lista, '08:00');
+  assert.equal(p1?.protocolo, 'AP-0002');
+
+  // Às 11:00, o próximo é o das 14:00
+  const p2 = proximoAtendimento(lista, '11:00');
+  assert.equal(p2?.protocolo, 'AP-0003');
+
+  // Às 15:00, não há mais agendamentos
+  const p3 = proximoAtendimento(lista, '15:00');
+  assert.equal(p3, null);
+});
+
+test('montarLinhasRelatorio gera as linhas formatadas do fechamento', () => {
+  const fechamento = {
+    data: '2026-10-25',
+    total: 3,
+    concluidos: 2,
+    agendados: 1,
+    cancelados: 0,
+    faturamento: 120,
+    aReceber: 60,
+    encerrado: false,
+    porServico: [
+      { id: 'banho', nome: 'Banho simples', quantidade: 3, faturado: 120 },
+    ],
+  };
+
+  const linhas = montarLinhasRelatorio(fechamento);
+  assert.ok(linhas.some((l) => l.includes('RELATÓRIO DE FECHAMENTO')));
+  assert.ok(linhas.some((l) => l.includes('25/10/2026')));
+  assert.ok(linhas.some((l) => l.includes('Total de atendimentos: 3')));
+  assert.ok(linhas.some((l) => l.includes('Banho simples')));
+  assert.ok(linhas.some((l) => l.includes('120,00')));
 });
