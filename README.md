@@ -11,6 +11,12 @@ Painel web responsivo e acessível para a gestão de agendamentos diários do pe
   - Validação completa com JavaScript no evento `submit` (com `preventDefault`): campos obrigatórios, telefone válido, data não passada e horário dentro do funcionamento.
   - Acessibilidade: mensagens de erro visíveis na tela anunciadas com `role="alert"` e `aria-live="polite"`, movendo o foco para o primeiro campo inválido (sem uso de `alert()`).
   - Ao salvar com sucesso: exibe feedback de confirmação, limpa o formulário e inclui o agendamento imediatamente na lista da agenda.
+- **US04 — Endereço Automático por CEP (ViaCEP):**
+  - Exibição condicional dos campos de endereço apenas para serviços que aceitam atendimento domiciliar.
+  - Consulta automática à API ViaCEP (`https://viacep.com.br/ws/{cep}/json/`) ao digitar 8 dígitos numéricos (com ou sem hífen).
+  - Preenchimento automático de logradouro, bairro, cidade e UF, posicionando o foco diretamente no campo número.
+  - Tratamento com mensagens específicas para formato inválido, CEP não encontrado e indisponibilidade de rede.
+  - Garantia de preenchimento manual completo do endereço caso a API esteja fora do ar.
 
 ## Decisões de Negócio e Regras da Loja
 

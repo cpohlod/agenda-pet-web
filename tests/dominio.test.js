@@ -22,6 +22,7 @@ import {
   horaValida,
   telefoneValido,
   cepValido,
+  formatarCep,
   validarAgendamento,
   temConflito,
   formatarMoeda,
@@ -236,4 +237,13 @@ test('filtrarAgendamentos combina busca e status', () => {
   const res2 = filtrarAgendamentos(lista, porBusca('sonia'), porStatus('Agendado'));
   assert.equal(res2.length, 1);
   assert.equal(res2[0].pet, 'Bela');
+});
+
+test('cepValido e formatarCep tratam o formato de 8 dígitos e máscara', () => {
+  assert.equal(cepValido('01310-200'), true);
+  assert.equal(cepValido('01310200'), true);
+  assert.equal(cepValido('123'), false);
+  assert.equal(cepValido('123456789'), false);
+  assert.equal(formatarCep('01310200'), '01310-200');
+  assert.equal(formatarCep('01310-200'), '01310-200');
 });
