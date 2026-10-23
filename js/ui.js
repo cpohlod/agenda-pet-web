@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ui.js — DESENHA NA TELA (DOM)   (tickets: US02, US03, US06, US09)
+   ui.js — DESENHA NA TELA (DOM)   (tickets: US02, US03, US04, US05, US06, US09)
    ========================================================================== */
 
 import { formatarMoeda, formatarDataBR, estaAtrasado } from './dominio/regras.js';
@@ -210,6 +210,8 @@ export function limparFormulario() {
   const form = $('form-agendamento');
   if (form) form.reset();
   alternarEndereco(false);
+  mostrarFeriado(null);
+  limparErros();
   esconderEstado($('cep-status'));
 }
 
@@ -228,7 +230,27 @@ export function preencherEndereco(dadosEndereco) {
   }
   const numInput = $('numero');
   if (numInput) numInput.focus();
-  limparErros();
+}
+
+/**
+ * Exibe ou esconde o aviso de feriado sob o campo de data (US05).
+ * @param {{date: string, name: string}|null} feriado
+ */
+export function mostrarFeriado(feriado) {
+  const container = $('feriado-aviso');
+  const textoEl = $('feriado-texto');
+  const check = $('feriado-confirmar');
+  if (!container || !textoEl) return;
+
+  if (feriado) {
+    textoEl.textContent = `${formatarDataBR(feriado.date)} é feriado: ${feriado.name}. Confirme com o tutor antes de agendar.`;
+    if (check) check.checked = false;
+    container.hidden = false;
+  } else {
+    container.hidden = true;
+    textoEl.textContent = '';
+    if (check) check.checked = false;
+  }
 }
 
 /**

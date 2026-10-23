@@ -3,6 +3,7 @@
    ========================================================================== */
 
 import { somenteDigitos, formatarCep } from './dominio/regras.js';
+import * as storage from './storage.js';
 
 /**
  * Erro personalizado de requisição com indicação do tipo de falha:
@@ -102,4 +103,36 @@ export async function buscarCep(cep) {
     cidade: dados.localidade || '',
     uf: dados.uf || '',
   };
+
+}
+
+/**
+ * Consulta feriados nacionais do ano pela BrasilAPI, utilizando cache no localStorage (US05).
+ * Validade do cache: 30 dias (gerenciada por storage.js).
+ * @param {number|string} ano
+ * @returns {Promise<Array<{date: string, name: string}>>}
+ */
+export async function buscarFeriados(ano) {
+  const anoStr = String(ano);
+  const emCache = storage.lerFeriadosCache(anoStr);
+  if (emCache) {
+    return emCache;
+  }
+
+  const url = `https://brasilapi.com.br/api/feriados/v1/${anoStr}`;
+  let feriados;
+  try {
+    feriados = await buscarJSON(url, `Erro ao consultar feriados de ${anoStr}`);
+  } catch (erro) {
+    if (erro instanceof ErroApi) throw erro;
+    throw new ErroApi('rede', 'Sem conexão para verificar feriados.');
+  }
+
+  if (Array.isArray(feriados)) {
+    storage.salvarFeriadosCache(anoStr, feriados);
+    return feriados;
+  }
+
+  return [];
+
 }
