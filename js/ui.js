@@ -210,6 +210,24 @@ export function limparFormulario() {
   const form = $('form-agendamento');
   if (form) form.reset();
   alternarEndereco(false);
+  esconderEstado($('cep-status'));
+}
+
+/**
+ * Preenche os campos de endereço a partir de um objeto consultado e move o foco para o número (US04).
+ * @param {object} dadosEndereco
+ */
+export function preencherEndereco(dadosEndereco) {
+  if (!dadosEndereco) return;
+  if ($('logradouro')) $('logradouro').value = dadosEndereco.logradouro || '';
+  if ($('bairro')) $('bairro').value = dadosEndereco.bairro || '';
+  if ($('cidade')) $('cidade').value = dadosEndereco.cidade || '';
+  if ($('uf')) $('uf').value = dadosEndereco.uf || '';
+  if (dadosEndereco.complemento && $('complemento')) {
+    $('complemento').value = dadosEndereco.complemento;
+  }
+  const numInput = $('numero');
+  if (numInput) numInput.focus();
   limparErros();
 }
 

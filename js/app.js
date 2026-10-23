@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app.js — O "MAESTRO" DA APLICAÇÃO   (tickets: US02, US03, US06)
+   app.js — O "MAESTRO" DA APLICAÇÃO   (tickets: US02, US03, US04, US06)
    ========================================================================== */
 
 import * as api from './api.js';
@@ -19,6 +19,8 @@ import {
   formatarDataBR,
   validarAgendamento,
   temConflito,
+  somenteDigitos,
+  formatarCep,
 } from './dominio/regras.js';
 
 import {
@@ -39,6 +41,7 @@ const estado = {
   busca: '',
   expandidos: new Set(),
   gerarProtocolo: null,
+  ultimoCepBuscado: '',
 };
 
 /**
@@ -116,6 +119,7 @@ function aoEnviarFormulario(evento) {
 
   // Limpa o formulário e redesenha a agenda
   ui.limparFormulario();
+  estado.ultimoCepBuscado = '';
   if (ui.$('data')) {
     ui.$('data').value = hojeISO();
   }
@@ -136,6 +140,58 @@ function aoEnviarFormulario(evento) {
     `Agendamento ${novoAgendamento.protocolo} salvo: ${novoAgendamento.pet} (${novoAgendamento.tutor}), ${formatarDataBR(novoAgendamento.data)} às ${novoAgendamento.hora}.`,
     'sucesso'
   );
+}
+
+/**
+ * Consulta o CEP no ViaCEP ao completar 8 dígitos e preenche o endereço (US04).
+ * @param {Event} evento
+ */
+async function aoDigitarCep(evento) {
+  const cep = evento.target.value;
+  const digitos = somenteDigitos(cep);
+  const statusEl = ui.$('cep-status');
+
+  if (digitos.length < 8) {
+    ui.esconderEstado(statusEl);
+    return;
+  }
+
+  if (digitos === estado.ultimoCepBuscado) {
+    return;
+  }
+
+  estado.ultimoCepBuscado = digitos;
+  ui.mostrarEstado(statusEl, 'carregando', 'Buscando endereço pelo CEP…');
+
+  try {
+    const endereco = await api.buscarCep(digitos);
+    if (somenteDigitos(ui.$('cep')?.value) === digitos) {
+      ui.preencherEndereco(endereco);
+      ui.mostrarEstado(
+        statusEl,
+        'sucesso',
+        'Endereço preenchido automaticamente! Informe o número e complemento.'
+      );
+    }
+  } catch (erro) {
+    ui.mostrarEstado(statusEl, 'erro', erro.message);
+  }
+}
+
+/**
+ * Formata o CEP ao sair do campo (US04).
+ * @param {Event} evento
+ */
+function aoSairDoCep(evento) {
+  const cep = evento.target.value.trim();
+  if (!cep) return;
+  const digitos = somenteDigitos(cep);
+  if (digitos.length === 8) {
+    evento.target.value = formatarCep(digitos);
+  } else {
+    const statusEl = ui.$('cep-status');
+    ui.mostrarEstado(statusEl, 'erro', 'Formato de CEP inválido: informe 8 dígitos numéricos.');
+  }
 }
 
 /**
@@ -185,12 +241,51 @@ function ligarEventos() {
     form.addEventListener('submit', aoEnviarFormulario);
   }
 
-  // Checkbox domiciliar
+  // Checkbox domiciliar (US04)
   const chkDomiciliar = ui.$('domiciliar');
   if (chkDomiciliar) {
     chkDomiciliar.addEventListener('change', (e) => {
+      const servicoId = ui.$('servico')?.value;
+      const servico = estado.servicos.find((s) => s.id === servicoId);
+
+      if (e.target.checked && servico && !servico.domiciliar) {
+        ui.mostrarErros({
+          servico: `"${servico.nome}" é realizado apenas na loja e não aceita atendimento domiciliar.`,
+        });
+        e.target.checked = false;
+        ui.alternarEndereco(false);
+        return;
+      }
+
       ui.alternarEndereco(e.target.checked);
+      if (!e.target.checked) {
+        ui.esconderEstado(ui.$('cep-status'));
+      } else {
+        ui.$('cep')?.focus();
+      }
     });
+  }
+
+  // Mudança no select de serviço (US04)
+  const selectServico = ui.$('servico');
+  if (selectServico) {
+    selectServico.addEventListener('change', (e) => {
+      const servico = estado.servicos.find((s) => s.id === e.target.value);
+      if (servico && !servico.domiciliar && ui.$('domiciliar')?.checked) {
+        ui.mostrarErros({
+          servico: `"${servico.nome}" é realizado apenas na loja e não aceita atendimento domiciliar.`,
+        });
+        ui.$('domiciliar').checked = false;
+        ui.alternarEndereco(false);
+      }
+    });
+  }
+
+  // Campo CEP (US04)
+  const inputCep = ui.$('cep');
+  if (inputCep) {
+    inputCep.addEventListener('input', aoDigitarCep);
+    inputCep.addEventListener('blur', aoSairDoCep);
   }
 
   // Interação com a agenda (expandir/concluir/cancelar)
