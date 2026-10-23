@@ -57,19 +57,20 @@
         <section class="cartao" id="novo-agendamento" aria-labelledby="titulo-novo-agendamento">
           <h2 class="cartao__titulo" id="titulo-novo-agendamento">Novo agendamento</h2>
           <p class="cartao__subtitulo">Cadastre atendimentos na loja ou a domicílio.</p>
+          <div class="status" id="form-status" role="status" hidden></div>
 
           <form class="form" id="form-agendamento" novalidate>
             <div class="linha">
               <div class="campo campo--grande">
                 <label class="campo__rotulo" for="tutor">Nome do tutor</label>
                 <input class="campo__entrada" type="text" id="tutor" name="tutor" autocomplete="name" required aria-describedby="erro-tutor">
-                <p class="campo__erro" id="erro-tutor" hidden></p>
+                <p class="campo__erro" id="erro-tutor" role="alert" aria-live="polite" hidden></p>
               </div>
 
               <div class="campo">
                 <label class="campo__rotulo" for="telefone">Telefone (com DDD)</label>
                 <input class="campo__entrada" type="tel" id="telefone" name="telefone" placeholder="(11) 99999-9999" autocomplete="tel" required aria-describedby="erro-telefone">
-                <p class="campo__erro" id="erro-telefone" hidden></p>
+                <p class="campo__erro" id="erro-telefone" role="alert" aria-live="polite" hidden></p>
               </div>
             </div>
 
@@ -77,7 +78,7 @@
               <div class="campo campo--grande">
                 <label class="campo__rotulo" for="pet">Nome do pet</label>
                 <input class="campo__entrada" type="text" id="pet" name="pet" required aria-describedby="erro-pet">
-                <p class="campo__erro" id="erro-pet" hidden></p>
+                <p class="campo__erro" id="erro-pet" role="alert" aria-live="polite" hidden></p>
               </div>
 
               <div class="campo">
@@ -88,7 +89,7 @@
                   <option value="Gato">Gato</option>
                   <option value="Outro">Outro</option>
                 </select>
-                <p class="campo__erro" id="erro-especie" hidden></p>
+                <p class="campo__erro" id="erro-especie" role="alert" aria-live="polite" hidden></p>
               </div>
             </div>
 
@@ -97,20 +98,20 @@
               <select class="campo__entrada" id="servico" name="servico" required aria-describedby="erro-servico">
                 <option value="">Selecione um serviço…</option>
               </select>
-              <p class="campo__erro" id="erro-servico" hidden></p>
+              <p class="campo__erro" id="erro-servico" role="alert" aria-live="polite" hidden></p>
             </div>
 
             <div class="linha">
               <div class="campo">
                 <label class="campo__rotulo" for="data">Data</label>
                 <input class="campo__entrada" type="date" id="data" name="data" required aria-describedby="erro-data">
-                <p class="campo__erro" id="erro-data" hidden></p>
+                <p class="campo__erro" id="erro-data" role="alert" aria-live="polite" hidden></p>
               </div>
 
               <div class="campo">
                 <label class="campo__rotulo" for="hora">Horário</label>
-                <input class="campo__entrada" type="time" id="hora" name="hora" step="1800" required aria-describedby="erro-hora">
-                <p class="campo__erro" id="erro-hora" hidden></p>
+                <input class="campo__entrada" type="time" id="hora" name="hora" step="1800" min="08:00" max="18:00" required aria-describedby="erro-hora">
+                <p class="campo__erro" id="erro-hora" role="alert" aria-live="polite" hidden></p>
               </div>
             </div>
 
@@ -136,13 +137,13 @@
                 <div class="campo">
                   <label class="campo__rotulo" for="cep">CEP</label>
                   <input class="campo__entrada" type="text" id="cep" name="cep" placeholder="00000-000" maxlength="9" aria-describedby="cep-status erro-cep">
-                  <p class="campo__erro" id="erro-cep" hidden></p>
+                  <p class="campo__erro" id="erro-cep" role="alert" aria-live="polite" hidden></p>
                 </div>
 
                 <div class="campo campo--grande">
                   <label class="campo__rotulo" for="logradouro">Logradouro / Rua</label>
                   <input class="campo__entrada" type="text" id="logradouro" name="logradouro" aria-describedby="erro-logradouro">
-                  <p class="campo__erro" id="erro-logradouro" hidden></p>
+                  <p class="campo__erro" id="erro-logradouro" role="alert" aria-live="polite" hidden></p>
                 </div>
               </div>
 
@@ -152,7 +153,7 @@
                 <div class="campo campo--pequeno">
                   <label class="campo__rotulo" for="numero">Número</label>
                   <input class="campo__entrada" type="text" id="numero" name="numero" aria-describedby="erro-numero">
-                  <p class="campo__erro" id="erro-numero" hidden></p>
+                  <p class="campo__erro" id="erro-numero" role="alert" aria-live="polite" hidden></p>
                 </div>
 
                 <div class="campo">
@@ -163,7 +164,7 @@
                 <div class="campo">
                   <label class="campo__rotulo" for="bairro">Bairro</label>
                   <input class="campo__entrada" type="text" id="bairro" name="bairro" aria-describedby="erro-bairro">
-                  <p class="campo__erro" id="erro-bairro" hidden></p>
+                  <p class="campo__erro" id="erro-bairro" role="alert" aria-live="polite" hidden></p>
                 </div>
               </div>
 
@@ -171,20 +172,21 @@
                 <div class="campo campo--grande">
                   <label class="campo__rotulo" for="cidade">Cidade</label>
                   <input class="campo__entrada" type="text" id="cidade" name="cidade" aria-describedby="erro-cidade">
-                  <p class="campo__erro" id="erro-cidade" hidden></p>
+                  <p class="campo__erro" id="erro-cidade" role="alert" aria-live="polite" hidden></p>
                 </div>
 
                 <div class="campo campo--pequeno">
                   <label class="campo__rotulo" for="uf">UF</label>
                   <input class="campo__entrada" type="text" id="uf" name="uf" maxlength="2" aria-describedby="erro-uf">
-                  <p class="campo__erro" id="erro-uf" hidden></p>
+                  <p class="campo__erro" id="erro-uf" role="alert" aria-live="polite" hidden></p>
                 </div>
               </div>
             </fieldset>
 
             <div class="campo">
               <label class="campo__rotulo" for="observacoes">Observações</label>
-              <textarea class="campo__entrada" id="observacoes" name="observacoes" rows="3" placeholder="Alergias, temperamento, preferências..."></textarea>
+              <textarea class="campo__entrada" id="observacoes" name="observacoes" rows="3" placeholder="Alergias, temperamento, preferências..." aria-describedby="erro-observacoes"></textarea>
+              <p class="campo__erro" id="erro-observacoes" role="alert" aria-live="polite" hidden></p>
             </div>
 
             <button type="submit" class="botao botao--principal botao--cheio">Salvar agendamento</button>
