@@ -1,104 +1,134 @@
 /* ==========================================================================
    ui.js — DESENHA NA TELA (DOM)   (tickets: US02, US03, US06, US09)
-
-   O QUE É ESTE ARQUIVO
-   Só mostra informação: recebe dados já prontos e os coloca na página.
-   NÃO busca dados (api.js), NÃO salva (storage.js), NÃO decide regra de
-   negócio (js/dominio/) e NÃO liga eventos (app.js).
-
-   REGRA DE SEGURANÇA
-   Texto vindo de pessoas (nome do tutor, observações...) entra SEMPRE com
-   textContent, NUNCA com innerHTML. Com innerHTML alguém poderia digitar
-   <img onerror=...> e executar código na sua página (XSS).
-
-   O QUE ESTE ARQUIVO CONCENTRA (cada item vira uma função exportada)
-   1) Atalhos:     $ = (id) => document.getElementById(id)
-                   criar(tag, { classe, texto, atributos }, ...filhos)  -> cria elementos
-   2) Estados:     mostrarEstado(elemento, tipo, texto, aoTentarNovamente)
-                   esconderEstado(elemento)   -> carregando / erro / vazio
-                   mostrarToast(texto, tipo)  -> mensagem rápida que some sozinha
-   3) Topo:        aplicarTema(tema)  (muda data-tema no <html> e o texto do botão),
-                   atualizarBotaoLembretes(), mostrarRelogio(), mostrarLembrete()
-   4) Catálogo:    renderizarServicos(lista), popularSelectServicos(lista)
-   5) Formulário:  lerFormulario() -> devolve um objeto com os valores dos campos
-                   mostrarErros(erros) / limparErros() -> usa as chaves do objeto
-                   de erros como ids (erro-<campo>) e marca aria-invalid
-                   limparFormulario(), definirDataMinima(), alternarEndereco(),
-                   preencherEndereco(), mostrarFeriado()...
-   6) Agenda:      renderizarAgenda(lista, opcoes) -> cria um <li> por item
-                   (nome, hora, status, valor, botões Concluir/Cancelar)
-   7) Fechamento:  renderizarFechamento(resumo) -> cartões de totais + tabela
-   8) Dados:       exibirExportacao(), definirBotaoLimpar()...
-
-   TÉCNICAS DO MÓDULO DE DOM QUE APARECEM AQUI
-   createElement, textContent, appendChild/append, replaceChildren, classList,
-   setAttribute, dataset, hidden, aria-*.
-
-   EXEMPLOS GENÉRICOS (assunto: lista de produtos):
-
-   // ---- Atalho e criador de elementos -----------------------------------
-   // const $ = (id) => document.getElementById(id);
-   // function criar(tag, { classe, texto, atributos = {} } = {}, ...filhos) {
-   //   const el = document.createElement(tag);
-   //   if (classe) el.className = classe;
-   //   if (texto !== undefined) el.textContent = texto;       // textContent = seguro
-   //   for (const [nome, valor] of Object.entries(atributos)) el.setAttribute(nome, valor);
-   //   el.append(...filhos);
-   //   return el;
-   // }
-
-   // ---- Renderizar uma lista (limpa e recria) ----------------------------
-   // export function renderizarProdutos(produtos) {
-   //   const ul = $('lista-produtos');
-   //   ul.replaceChildren(                                    // apaga o que tinha e põe o novo
-   //     ...produtos.map((p) =>
-   //       criar('li', { classe: 'produto' },
-   //         criar('strong', { texto: p.nome }),
-   //         criar('span', { texto: formatarMoeda(p.preco) }),
-   //       ),
-   //     ),
-   //   );
-   // }
-
-   // ---- Guardar o id do item no elemento para o clique achar depois -------
-   // const botao = criar('button', { texto: 'Remover', atributos: { type: 'button', 'data-acao': 'remover' } });
-   // li.dataset.id = produto.id;          // lido com  elemento.closest('li').dataset.id
-
-   // ---- Estado de carregando / erro / vazio ------------------------------
-   // export function mostrarEstado(elemento, tipo, texto) {
-   //   elemento.hidden = false;
-   //   elemento.className = `status status--${tipo}`;         // classes diferentes = cores diferentes
-   //   elemento.textContent = texto;
-   // }
-
-   // ---- Ler formulário e mostrar erros por campo -------------------------
-   // export const lerFormulario = () => ({ nome: $('nome').value.trim(), qtd: $('qtd').value });
-   // export function mostrarErros(erros) {
-   //   for (const [campo, mensagem] of Object.entries(erros)) {
-   //     $(campo).setAttribute('aria-invalid', 'true');
-   //     $(`erro-${campo}`).textContent = mensagem;
-   //     $(`erro-${campo}`).hidden = false;
-   //   }
-   //   $(Object.keys(erros)[0])?.focus();                      // leva o foco ao primeiro erro
-   // }
-
-   // ---- Tema ------------------------------------------------------------
-   // export function aplicarTema(tema) {
-   //   document.documentElement.dataset.tema = tema;          // o CSS reage a [data-tema="escuro"]
-   //   $('btn-tema').textContent = tema === 'escuro' ? 'Tema claro' : 'Tema escuro';
-   //   $('btn-tema').setAttribute('aria-pressed', String(tema === 'escuro'));
-   // }
-
-   // ---- Toast que some sozinho -------------------------------------------
-   // let timerToast;
-   // export function mostrarToast(texto, tipo = 'sucesso', ms = 4000) {
-   //   const t = $('toast'); t.textContent = texto; t.className = `toast toast--${tipo}`; t.hidden = false;
-   //   clearTimeout(timerToast);
-   //   timerToast = setTimeout(() => { t.hidden = true; }, ms);
-   // }
-
-   COMO TESTAR
-   Chame as funções pelo console ou pelo app.js com dados de mentira e veja
-   o resultado no navegador. Teste também com um nome contendo "<b>oi</b>":
-   ele deve aparecer como texto, sem virar negrito.
    ========================================================================== */
+
+import { formatarMoeda } from './dominio/regras.js';
+
+/**
+ * Atalho para document.getElementById.
+ * @param {string} id
+ * @returns {HTMLElement|null}
+ */
+export const $ = (id) => document.getElementById(id);
+
+/**
+ * Cria um elemento HTML com classes, texto e atributos de forma segura (sem innerHTML de usuário).
+ * @param {string} tag
+ * @param {object} [opcoes={}]
+ * @param {string} [opcoes.classe]
+ * @param {string} [opcoes.texto]
+ * @param {Record<string, string>} [opcoes.atributos]
+ * @param  {...HTMLElement|string} filhos
+ * @returns {HTMLElement}
+ */
+export function criar(tag, { classe, texto, atributos = {} } = {}, ...filhos) {
+  const el = document.createElement(tag);
+  if (classe) el.className = classe;
+  if (texto !== undefined && texto !== null) el.textContent = String(texto);
+  for (const [chave, valor] of Object.entries(atributos)) {
+    if (valor !== undefined && valor !== null) {
+      el.setAttribute(chave, valor);
+    }
+  }
+  for (const filho of filhos) {
+    if (filho instanceof HTMLElement) {
+      el.appendChild(filho);
+    } else if (filho !== undefined && filho !== null) {
+      el.appendChild(document.createTextNode(String(filho)));
+    }
+  }
+  return el;
+}
+
+/**
+ * Mostra uma mensagem de estado (carregando, erro ou sucesso) em um elemento container.
+ * @param {HTMLElement} el
+ * @param {'carregando'|'erro'|'sucesso'|'info'} tipo
+ * @param {string} texto
+ * @param {Function} [aoTentarNovamente] Callback para o botão de tentar novamente
+ */
+export function mostrarEstado(el, tipo, texto, aoTentarNovamente) {
+  if (!el) return;
+  el.className = `status status--${tipo}`;
+  el.replaceChildren();
+
+  const span = criar('span', { texto });
+  el.appendChild(span);
+
+  if (tipo === 'erro' && typeof aoTentarNovamente === 'function') {
+    const btn = criar(
+      'button',
+      {
+        classe: 'botao botao--secundario botao--pequeno',
+        texto: 'Tentar novamente',
+        atributos: { type: 'button' },
+      }
+    );
+    btn.style.marginLeft = '12px';
+    btn.addEventListener('click', aoTentarNovamente);
+    el.appendChild(btn);
+  }
+
+  el.hidden = false;
+}
+
+/**
+ * Esconde o elemento de estado.
+ * @param {HTMLElement} el
+ */
+export function esconderEstado(el) {
+  if (!el) return;
+  el.hidden = true;
+  el.replaceChildren();
+}
+
+/**
+ * Renderiza o catálogo de serviços na lista <ul id="lista-servicos">.
+ * @param {Array} lista
+ */
+export function renderizarServicos(lista = []) {
+  const ul = $('lista-servicos');
+  if (!ul) return;
+
+  const itens = lista.map((s) => {
+    const topo = criar(
+      'div',
+      { classe: 'servico__topo' },
+      criar('strong', { texto: s.nome }),
+      criar('span', { classe: 'servico__preco', texto: formatarMoeda(s.preco) })
+    );
+
+    const desc = criar('p', { classe: 'servico__descricao', texto: s.descricao });
+    const meta = criar('span', {
+      classe: 'servico__meta',
+      texto: `Duração: ${s.duracaoMin} min · ${s.domiciliar ? 'Aceita domicílio' : 'Apenas na loja'}`,
+    });
+
+    return criar('li', { classe: 'servico' }, topo, desc, meta);
+  });
+
+  ul.replaceChildren(...itens);
+}
+
+/**
+ * Preenche as opções do select de serviços no formulário.
+ * @param {Array} lista
+ */
+export function popularSelectServicos(lista = []) {
+  const select = $('servico');
+  if (!select) return;
+
+  const fragment = document.createDocumentFragment();
+  const optPadrao = criar('option', { texto: 'Selecione um serviço…', atributos: { value: '' } });
+  fragment.appendChild(optPadrao);
+
+  for (const s of lista) {
+    const opt = criar('option', {
+      texto: `${s.nome} — ${formatarMoeda(s.preco)} (${s.duracaoMin} min)`,
+      atributos: { value: s.id },
+    });
+    fragment.appendChild(opt);
+  }
+
+  select.replaceChildren(fragment);
+}
