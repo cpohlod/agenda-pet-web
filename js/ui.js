@@ -320,20 +320,26 @@ function normalizarStatusSelo(status) {
  * @param {Array} lista
  * @param {object} [opcoes={}]
  */
-export function renderizarAgenda(lista = [], { expandidos = new Set(), dataExibida = '', agora = new Date() } = {}) {
+export function renderizarAgenda(lista = [], { expandidos = new Set(), selecionado = null, dataExibida = '', agora = new Date(), temFiltros = false } = {}) {
   const ul = $('lista-agenda');
   const contador = $('contador');
   const vazio = $('agenda-vazio');
 
   if (contador) {
-    contador.textContent = `${lista.length} agendamento(s) encontrado(s)`;
+    const qtd = lista.length;
+    contador.textContent = `${qtd} ${qtd === 1 ? 'agendamento' : 'agendamentos'}`;
   }
 
   if (!ul) return;
 
   if (lista.length === 0) {
     ul.replaceChildren();
-    if (vazio) vazio.hidden = false;
+    if (vazio) {
+      vazio.textContent = temFiltros
+        ? 'Nenhum agendamento encontrado para os filtros selecionados.'
+        : 'Nenhum agendamento para este dia. Use o formulário para criar o primeiro.';
+      vazio.hidden = false;
+    }
     return;
   }
 
@@ -356,6 +362,7 @@ export function renderizarAgenda(lista = [], { expandidos = new Set(), dataExibi
     if (statusClasse) liClasses.push(statusClasse);
     if (atrasado) liClasses.push('item--atrasado');
     if (expandido) liClasses.push('item--expandido');
+    if (item.protocolo === selecionado) liClasses.push('item--realce');
 
     // Botão de expandir cabeçalho
     const toggleBtn = criar(
@@ -445,7 +452,7 @@ export function renderizarAgenda(lista = [], { expandidos = new Set(), dataExibi
       filhosLi.push(dl);
     }
 
-    return criar('li', { classe: liClasses.join(' '), atributos: { 'data-protocolo': item.protocolo } }, ...filhosLi);
+    return criar('li', { classe: liClasses.join(' '), atributos: { 'data-protocolo': item.protocolo, tabindex: '0' } }, ...filhosLi);
   });
 
   ul.replaceChildren(...itens);
