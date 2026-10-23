@@ -1,5 +1,5 @@
 /* ==========================================================================
-   app.js — O "MAESTRO" DA APLICAÇÃO   (tickets: US02, US03, US04, US06)
+   app.js — O "MAESTRO" DA APLICAÇÃO   (tickets: US02, US03, US04, US05, US06)
    ========================================================================== */
 
 import * as api from './api.js';
@@ -21,6 +21,7 @@ import {
   temConflito,
   somenteDigitos,
   formatarCep,
+  acharFeriado,
 } from './dominio/regras.js';
 
 import {
@@ -42,6 +43,7 @@ const estado = {
   expandidos: new Set(),
   gerarProtocolo: null,
   ultimoCepBuscado: '',
+  feriado: null,
 };
 
 /**
@@ -70,7 +72,7 @@ function atualizarAgenda() {
 }
 
 /**
- * Trata o envio do formulário de agendamento (US03).
+ * Trata o envio do formulário de agendamento (US03, US05).
  * @param {Event} evento
  */
 function aoEnviarFormulario(evento) {
@@ -81,8 +83,9 @@ function aoEnviarFormulario(evento) {
   const servico = estado.servicos.find((s) => s.id === dados.servicoId);
   const confirmouFeriado = Boolean(ui.$('feriado-confirmar')?.checked);
 
-  // Validação no submit com preventDefault
+  // Validação no submit com preventDefault (incluindo checagem de feriado)
   const erros = validarAgendamento(dados, servico, {
+    feriado: estado.feriado,
     confirmouFeriado,
     agora: new Date(),
   });
@@ -119,6 +122,7 @@ function aoEnviarFormulario(evento) {
 
   // Limpa o formulário e redesenha a agenda
   ui.limparFormulario();
+  estado.feriado = null;
   estado.ultimoCepBuscado = '';
   if (ui.$('data')) {
     ui.$('data').value = hojeISO();
@@ -191,6 +195,36 @@ function aoSairDoCep(evento) {
   } else {
     const statusEl = ui.$('cep-status');
     ui.mostrarEstado(statusEl, 'erro', 'Formato de CEP inválido: informe 8 dígitos numéricos.');
+  }
+}
+
+/**
+ * Trata alteração da data no formulário para alertar sobre feriados nacionais (US05).
+ * Consulta BrasilAPI ou cache de 30 dias no localStorage.
+ * Se a data for feriado, exibe aviso e exige confirmação "Agendar mesmo assim".
+ * Se a API falhar, avisa com toast e permite continuar normalmente.
+ * @param {Event} [evento]
+ */
+async function aoMudarData(evento) {
+  const data = evento?.target?.value || ui.$('data')?.value;
+  estado.feriado = null;
+  ui.mostrarFeriado(null);
+
+  if (!data) return;
+  const ano = data.slice(0, 4);
+
+  try {
+    const feriados = await api.buscarFeriados(ano);
+    if (ui.$('data')?.value === data) {
+      const achado = acharFeriado(feriados, data);
+      if (achado) {
+        estado.feriado = achado;
+        ui.mostrarFeriado(achado);
+      }
+    }
+  } catch {
+    // Se a API falhar, avisar que não foi possível verificar feriados e permitir continuar
+    ui.mostrarToast('Não foi possível verificar feriados para a data escolhida. Você pode prosseguir com o agendamento.', 'info');
   }
 }
 
@@ -288,6 +322,13 @@ function ligarEventos() {
     inputCep.addEventListener('blur', aoSairDoCep);
   }
 
+  // Campo Data para alerta de feriados (US05)
+  const inputData = ui.$('data');
+  if (inputData) {
+    inputData.addEventListener('change', aoMudarData);
+    inputData.addEventListener('input', aoMudarData);
+  }
+
   // Interação com a agenda (expandir/concluir/cancelar)
   const ulAgenda = ui.$('lista-agenda');
   if (ulAgenda) {
@@ -373,6 +414,11 @@ async function iniciar() {
 
   await carregarCatalogo();
   carregarAgendaSalva();
+
+  // Verifica se a data inicial padrão é feriado
+  if (ui.$('data')?.value) {
+    aoMudarData();
+  }
 }
 
 // Inicializa a aplicação

@@ -17,6 +17,11 @@ Painel web responsivo e acessível para a gestão de agendamentos diários do pe
   - Preenchimento automático de logradouro, bairro, cidade e UF, posicionando o foco diretamente no campo número.
   - Tratamento com mensagens específicas para formato inválido, CEP não encontrado e indisponibilidade de rede.
   - Garantia de preenchimento manual completo do endereço caso a API esteja fora do ar.
+- **US05 — Alerta de Feriados com Cache (BrasilAPI):**
+  - Consulta de feriados nacionais na BrasilAPI (`https://brasilapi.com.br/api/feriados/v1/{ano}`) ao selecionar a data.
+  - Cache no `localStorage` com registro de data da consulta e validade de 30 dias para evitar requisições repetidas.
+  - Exibição do nome do feriado e bloqueio do salvamento sem a marcação explícita de "Agendar mesmo assim".
+  - Resiliência: caso a API de feriados falhe, um aviso é emitido e o sistema permite continuar o agendamento normalmente.
 
 ## Decisões de Negócio e Regras da Loja
 

@@ -26,6 +26,7 @@ import {
   validarAgendamento,
   temConflito,
   formatarMoeda,
+  acharFeriado,
 } from '../js/dominio/regras.js';
 
 import {
@@ -246,4 +247,40 @@ test('cepValido e formatarCep tratam o formato de 8 dígitos e máscara', () => 
   assert.equal(cepValido('123456789'), false);
   assert.equal(formatarCep('01310200'), '01310-200');
   assert.equal(formatarCep('01310-200'), '01310-200');
+});
+
+test('acharFeriado identifica feriado e validarAgendamento exige confirmação em feriado', () => {
+  const feriados = [
+    { date: '2026-11-02', name: 'Finados' },
+    { date: '2026-11-15', name: 'Proclamação da República' },
+  ];
+
+  const achado = acharFeriado(feriados, '2026-11-02');
+  assert.equal(achado?.name, 'Finados');
+  assert.equal(acharFeriado(feriados, '2026-11-03'), null);
+
+  const dadosValidos = {
+    tutor: 'Carlos Silva',
+    telefone: '(11) 98765-4321',
+    pet: 'Rex',
+    especie: 'Cão',
+    servicoId: 'banho',
+    domiciliar: false,
+    data: '2026-11-02',
+    hora: '10:00',
+  };
+
+  // Sem confirmar o feriado: deve retornar erro em feriado-confirmar
+  const errosSemConfirmacao = validarAgendamento(dadosValidos, servicoBanho, {
+    feriado: achado,
+    confirmouFeriado: false,
+  });
+  assert.ok(errosSemConfirmacao['feriado-confirmar']);
+
+  // Confirmando o feriado: deve passar sem erro
+  const errosComConfirmacao = validarAgendamento(dadosValidos, servicoBanho, {
+    feriado: achado,
+    confirmouFeriado: true,
+  });
+  assert.equal(Object.keys(errosComConfirmacao).length, 0);
 });

@@ -119,8 +119,9 @@
             <div class="aviso aviso--feriado" id="feriado-aviso" hidden>
               <p class="aviso__texto" id="feriado-texto"></p>
               <div class="campo campo--check">
-                <input type="checkbox" id="feriado-confirmar">
+                <input type="checkbox" id="feriado-confirmar" aria-describedby="erro-feriado-confirmar">
                 <label for="feriado-confirmar">Agendar mesmo assim</label>
+                <p class="campo__erro" id="erro-feriado-confirmar" role="alert" aria-live="polite" hidden></p>
               </div>
             </div>
 
