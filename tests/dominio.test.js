@@ -1,68 +1,239 @@
 /* ==========================================================================
-   dominio.test.js — TESTES AUTOMÁTICOS DO DOMÍNIO   (ticket: US07 / US11; opcional)
-
-   O QUE É ESTE ARQUIVO
-   Testes que rodam no Node, sem navegador, com o executor nativo (node:test):
-       npm test
-   Eles provam que as regras de js/dominio/ funcionam — e continuam
-   funcionando depois que você mexe no código. Só é possível testar assim
-   porque o domínio é PURO (sem DOM).
-
-   O QUE FAZER AQUI
-   1) Importar test e assert, e as funções que serão testadas:
-        import test from 'node:test';
-        import assert from 'node:assert/strict';
-        import { ... } from '../js/dominio/agendamento.js';
-   2) Montar os dados de apoio (catálogo e agenda lidos dos JSON em data/).
-   3) Escrever um test('descrição', () => { ... }) por comportamento.
-   4) Cubra pelo menos: closure do protocolo, herança (valor domiciliar),
-      conflito de horário, horário dentro do funcionamento, validação do
-      formulário, fechamento do dia e filtros.
-
-   PADRÃO DE UM BOM TESTE (Preparar -> Executar -> Conferir)
-   Dê ao teste um nome que explique a REGRA, não a função:
-   "cancelado libera o horário", e não "testa conflitaCom".
-
-   EXEMPLOS GENÉRICOS (assunto: carrinho de compras):
-
-   // ---- Cabeçalho -----------------------------------------------------------
-   // import test from 'node:test';
-   // import assert from 'node:assert/strict';
-   // import { Carrinho, aplicarCupom } from '../js/dominio/carrinho.js';
-
-   // ---- Teste simples --------------------------------------------------------
-   // test('o carrinho soma o preço dos itens', () => {
-   //   const carrinho = new Carrinho();                       // preparar
-   //   carrinho.adicionar({ nome: 'Caneta', preco: 3 });
-   //   carrinho.adicionar({ nome: 'Caderno', preco: 20 });
-   //   assert.equal(carrinho.total(), 23);                    // conferir
-   // });
-
-   // ---- Teste de regra com vários casos ------------------------------------
-   // test('cupom não deixa o total negativo', () => {
-   //   assert.equal(aplicarCupom(10, 50), 0);
-   // });
-
-   // ---- Teste que espera um erro -----------------------------------------
-   // test('item sem preço lança erro', () => {
-   //   assert.throws(() => new Carrinho().adicionar({ nome: 'X' }), /preço/);
-   // });
-
-   // ---- Ler JSON em teste (ESM) ---------------------------------------------
-   // import { readFile } from 'node:fs/promises';
-   // const lerJSON = async (c) => JSON.parse(await readFile(new URL(`../${c}`, import.meta.url), 'utf8'));
-   // const catalogo = (await lerJSON('data/servicos.json')).map((s) => new Servico(s));
-
-   // ---- Closure ---------------------------------------------------------------
-   // test('o gerador preserva o contador entre chamadas', () => {
-   //   const proximo = criarGerador(7);
-   //   assert.equal(proximo(), 'X-0008');
-   //   assert.equal(proximo(), 'X-0009');
-   // });
-
-   DICAS
-   - Passe datas/horas FIXAS aos testes (por isso as funções recebem "agora"
-     por parâmetro): o teste nunca pode depender do dia em que roda.
-   - Se um teste falhar, o Node mostra o valor esperado e o obtido.
-   - Para depurar: configuração "Depurar testes do domínio" no launch.json.
+   dominio.test.js — TESTES AUTOMÁTICOS DO DOMÍNIO   (ticket: US07 / US11)
    ========================================================================== */
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  CONFIG,
+  STATUS,
+  Servico,
+  Agendamento,
+  AgendamentoDomiciliar,
+  criarAgendamento,
+  criarGeradorProtocolo,
+  ultimoNumeroProtocolo,
+} from '../js/dominio/agendamento.js';
+
+import {
+  horarioDentroDoFuncionamento,
+  dataValida,
+  horaValida,
+  telefoneValido,
+  cepValido,
+  validarAgendamento,
+  temConflito,
+  formatarMoeda,
+} from '../js/dominio/regras.js';
+
+import {
+  filtrarAgendamentos,
+  porStatus,
+  porBusca,
+  calcularFechamento,
+  proximoAtendimento,
+} from '../js/dominio/fechamento.js';
+
+const servicoBanho = new Servico({
+  id: 'banho',
+  nome: 'Banho',
+  descricao: 'Banho simples',
+  preco: 60,
+  duracaoMin: 60,
+  domiciliar: true,
+});
+
+const servicoAdestramento = new Servico({
+  id: 'adestramento',
+  nome: 'Adestramento',
+  descricao: 'Sessão na loja',
+  preco: 110,
+  duracaoMin: 60,
+  domiciliar: false,
+});
+
+const catalogo = [servicoBanho, servicoAdestramento];
+
+test('closure: o protocolo é sequencial e mantém o estado', () => {
+  const proximo = criarGeradorProtocolo(7);
+  assert.equal(proximo(), 'AP-0008');
+  assert.equal(proximo(), 'AP-0009');
+});
+
+test('ultimoNumeroProtocolo identifica o maior identificador', () => {
+  const lista = [
+    { protocolo: 'AP-0002' },
+    { protocolo: 'AP-0015' },
+    { protocolo: 'AP-0003' },
+  ];
+  assert.equal(ultimoNumeroProtocolo(lista), 15);
+});
+
+test('herança: atendimento na loja cobra o valor do serviço', () => {
+  const ag = new Agendamento({
+    protocolo: 'AP-0001',
+    tutor: 'Mariana',
+    telefone: '(11) 98888-7777',
+    pet: 'Thor',
+    especie: 'Cão',
+    servico: servicoBanho,
+    data: '2026-10-25',
+    hora: '09:00',
+  });
+  assert.equal(ag.calcularValor(), 60);
+  assert.equal(ag.tipo, 'Na loja');
+});
+
+test('herança: atendimento domiciliar inclui taxa de deslocamento para SP e fora de SP', () => {
+  const domiciliarSP = new AgendamentoDomiciliar({
+    protocolo: 'AP-0002',
+    tutor: 'Carlos',
+    telefone: '(11) 97777-6666',
+    pet: 'Luna',
+    especie: 'Cão',
+    servico: servicoBanho,
+    data: '2026-10-25',
+    hora: '10:00',
+    endereco: { cidade: 'São Paulo', uf: 'SP', logradouro: 'Av Paulista', numero: '100' },
+  });
+  assert.equal(domiciliarSP.taxaDeslocamento(), CONFIG.taxaSP);
+  assert.equal(domiciliarSP.calcularValor(), 60 + CONFIG.taxaSP);
+
+  const domiciliarOutra = new AgendamentoDomiciliar({
+    protocolo: 'AP-0003',
+    tutor: 'Paula',
+    telefone: '(11) 96666-5555',
+    pet: 'Rex',
+    especie: 'Cão',
+    servico: servicoBanho,
+    data: '2026-10-25',
+    hora: '11:00',
+    endereco: { cidade: 'Guarulhos', uf: 'SP', logradouro: 'Rua Central', numero: '50' },
+  });
+  assert.equal(domiciliarOutra.taxaDeslocamento(), CONFIG.taxaOutra);
+  assert.equal(domiciliarOutra.calcularValor(), 60 + CONFIG.taxaOutra);
+});
+
+test('horarioDentroDoFuncionamento respeita abertura, fechamento e múltiplos de 30 min', () => {
+  assert.equal(horarioDentroDoFuncionamento('08:00', 60), true);
+  assert.equal(horarioDentroDoFuncionamento('17:00', 60), true);
+  assert.equal(horarioDentroDoFuncionamento('17:30', 60), false); // terminaria 18:30 (após fechamento)
+  assert.equal(horarioDentroDoFuncionamento('07:30', 30), false); // antes da abertura
+  assert.equal(horarioDentroDoFuncionamento('09:15', 30), false); // não é múltiplo de 30 min
+});
+
+test('conflito de horários: mesmo dia e hora impede agendamento ativo, mas cancelado libera', () => {
+  const item1 = new Agendamento({
+    protocolo: 'AP-0001',
+    tutor: 'Mariana',
+    telefone: '(11) 98888-7777',
+    pet: 'Thor',
+    especie: 'Cão',
+    servico: servicoBanho,
+    data: '2026-10-25',
+    hora: '09:00',
+    status: STATUS.AGENDADO,
+  });
+
+  const item2 = new Agendamento({
+    protocolo: 'AP-0002',
+    tutor: 'Lucas',
+    telefone: '(11) 99999-8888',
+    pet: 'Mel',
+    especie: 'Gato',
+    servico: servicoBanho,
+    data: '2026-10-25',
+    hora: '09:00',
+    status: STATUS.AGENDADO,
+  });
+
+  assert.equal(temConflito([item1], item2), true);
+
+  item1.alterarStatus(STATUS.CANCELADO);
+  assert.equal(temConflito([item1], item2), false);
+});
+
+test('validarAgendamento valida campos obrigatórios, telefone e serviço domiciliar', () => {
+  const dadosInvalidos = {
+    tutor: '',
+    telefone: '123',
+    pet: '',
+    especie: '',
+    servicoId: 'adestramento',
+    domiciliar: true, // adestramento não aceita domicílio
+    data: '2020-01-01',
+    hora: '07:00',
+  };
+
+  const erros = validarAgendamento(dadosInvalidos, servicoAdestramento);
+  assert.ok(erros.tutor);
+  assert.ok(erros.telefone);
+  assert.ok(erros.pet);
+  assert.ok(erros.especie);
+  assert.ok(erros.servico);
+  assert.ok(erros.data);
+  assert.ok(erros.hora);
+});
+
+test('calcularFechamento contabiliza faturamento só dos concluídos e valores a receber', () => {
+  const lista = [
+    new Agendamento({
+      protocolo: 'AP-0001',
+      tutor: 'Tutor 1',
+      telefone: '(11) 91111-2222',
+      pet: 'Pet 1',
+      especie: 'Cão',
+      servico: servicoBanho,
+      data: '2026-10-25',
+      hora: '09:00',
+      status: STATUS.CONCLUIDO,
+    }),
+    new Agendamento({
+      protocolo: 'AP-0002',
+      tutor: 'Tutor 2',
+      telefone: '(11) 92222-3333',
+      pet: 'Pet 2',
+      especie: 'Cão',
+      servico: servicoBanho,
+      data: '2026-10-25',
+      hora: '10:00',
+      status: STATUS.AGENDADO,
+    }),
+    new Agendamento({
+      protocolo: 'AP-0003',
+      tutor: 'Tutor 3',
+      telefone: '(11) 93333-4444',
+      pet: 'Pet 3',
+      especie: 'Gato',
+      servico: servicoBanho,
+      data: '2026-10-25',
+      hora: '11:00',
+      status: STATUS.CANCELADO,
+    }),
+  ];
+
+  const fechamento = calcularFechamento(lista, '2026-10-25');
+  assert.equal(fechamento.total, 3);
+  assert.equal(fechamento.concluidos, 1);
+  assert.equal(fechamento.agendados, 1);
+  assert.equal(fechamento.cancelados, 1);
+  assert.equal(fechamento.faturamento, 60);
+  assert.equal(fechamento.aReceber, 60);
+  assert.equal(fechamento.encerrado, false);
+});
+
+test('filtrarAgendamentos combina busca e status', () => {
+  const lista = [
+    { tutor: 'Sônia Martins', pet: 'Zeca', protocolo: 'AP-0001', status: 'Concluído' },
+    { tutor: 'Carlos Lima', pet: 'Luna', protocolo: 'AP-0002', status: 'Agendado' },
+    { tutor: 'Sônia Souza', pet: 'Bela', protocolo: 'AP-0003', status: 'Agendado' },
+  ];
+
+  const res1 = filtrarAgendamentos(lista, porStatus('Agendado'));
+  assert.equal(res1.length, 2);
+
+  const res2 = filtrarAgendamentos(lista, porBusca('sonia'), porStatus('Agendado'));
+  assert.equal(res2.length, 1);
+  assert.equal(res2[0].pet, 'Bela');
+});

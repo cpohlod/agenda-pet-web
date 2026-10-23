@@ -2,7 +2,8 @@
    ui.js — DESENHA NA TELA (DOM)   (tickets: US02, US03, US06, US09)
    ========================================================================== */
 
-import { formatarMoeda } from './dominio/regras.js';
+import { formatarMoeda, formatarDataBR, estaAtrasado } from './dominio/regras.js';
+import { STATUS } from './dominio/agendamento.js';
 
 /**
  * Atalho para document.getElementById.
@@ -83,6 +84,24 @@ export function esconderEstado(el) {
 }
 
 /**
+ * Gerenciador de toast temporário.
+ */
+let timerToast = null;
+export function mostrarToast(texto, tipo = 'sucesso', duracaoMs = 4000) {
+  const toast = $('toast');
+  if (!toast) return;
+
+  clearTimeout(timerToast);
+  toast.className = `toast toast--${tipo}`;
+  toast.textContent = texto;
+  toast.hidden = false;
+
+  timerToast = setTimeout(() => {
+    toast.hidden = true;
+  }, duracaoMs);
+}
+
+/**
  * Renderiza o catálogo de serviços na lista <ul id="lista-servicos">.
  * @param {Array} lista
  */
@@ -131,4 +150,263 @@ export function popularSelectServicos(lista = []) {
   }
 
   select.replaceChildren(fragment);
+}
+
+/**
+ * Define a data mínima permitida no input de data do formulário.
+ * @param {string} dataMinima ISO (AAAA-MM-DD)
+ */
+export function definirDataMinima(dataMinima) {
+  const input = $('data');
+  if (input) input.min = dataMinima;
+}
+
+/**
+ * Lê os dados preenchidos no formulário de agendamento.
+ * @returns {object}
+ */
+export function lerFormulario() {
+  const tutor = $('tutor')?.value ?? '';
+  const telefone = $('telefone')?.value ?? '';
+  const pet = $('pet')?.value ?? '';
+  const especie = $('especie')?.value ?? '';
+  const servicoId = $('servico')?.value ?? '';
+  const data = $('data')?.value ?? '';
+  const hora = $('hora')?.value ?? '';
+  const domiciliar = Boolean($('domiciliar')?.checked);
+  const observacoes = $('observacoes')?.value ?? '';
+
+  let endereco = null;
+  if (domiciliar) {
+    endereco = {
+      cep: $('cep')?.value ?? '',
+      logradouro: $('logradouro')?.value ?? '',
+      numero: $('numero')?.value ?? '',
+      complemento: $('complemento')?.value ?? '',
+      bairro: $('bairro')?.value ?? '',
+      cidade: $('cidade')?.value ?? '',
+      uf: $('uf')?.value ?? '',
+    };
+  }
+
+  return {
+    tutor,
+    telefone,
+    pet,
+    especie,
+    servicoId,
+    data,
+    hora,
+    domiciliar,
+    observacoes,
+    endereco,
+  };
+}
+
+/**
+ * Limpa todos os campos do formulário e estados auxiliares.
+ */
+export function limparFormulario() {
+  const form = $('form-agendamento');
+  if (form) form.reset();
+  alternarEndereco(false);
+  limparErros();
+}
+
+/**
+ * Mostra as mensagens de erro nos campos correspondentes e foca o primeiro campo inválido.
+ * Garante que mensagens sejam anunciadas via role="alert" / aria-live.
+ * @param {Record<string, string>} erros
+ */
+export function mostrarErros(erros = {}) {
+  limparErros();
+  let primeiroCampoFocado = false;
+
+  for (const [campoId, mensagem] of Object.entries(erros)) {
+    const elementoErro = $(`erro-${campoId}`);
+    if (elementoErro) {
+      elementoErro.textContent = mensagem;
+      elementoErro.hidden = false;
+    }
+
+    const input = $(campoId);
+    if (input) {
+      input.setAttribute('aria-invalid', 'true');
+      if (!primeiroCampoFocado) {
+        input.focus();
+        primeiroCampoFocado = true;
+      }
+    }
+  }
+}
+
+/**
+ * Remove mensagens de erro e desmarca aria-invalid em todos os campos.
+ */
+export function limparErros() {
+  const erros = document.querySelectorAll('.campo__erro');
+  erros.forEach((p) => {
+    p.hidden = true;
+    p.textContent = '';
+  });
+
+  const invalidos = document.querySelectorAll('[aria-invalid="true"]');
+  invalidos.forEach((el) => el.removeAttribute('aria-invalid'));
+}
+
+/**
+ * Mostra ou esconde o fieldset de endereço para atendimentos domiciliares.
+ * @param {boolean} visivel
+ */
+export function alternarEndereco(visivel) {
+  const grupo = $('grupo-endereco');
+  if (grupo) grupo.hidden = !visivel;
+}
+
+/**
+ * Normaliza classe de estilo para o selo de status.
+ * @param {string} status
+ * @returns {string}
+ */
+function normalizarStatusSelo(status) {
+  const s = String(status || '').toLowerCase();
+  if (s.includes('concl')) return 'concluido';
+  if (s.includes('canc')) return 'cancelado';
+  return 'agendado';
+}
+
+/**
+ * Renderiza a lista de agendamentos na agenda do dia (US06).
+ * @param {Array} lista
+ * @param {object} [opcoes={}]
+ */
+export function renderizarAgenda(lista = [], { expandidos = new Set(), dataExibida = '', agora = new Date() } = {}) {
+  const ul = $('lista-agenda');
+  const contador = $('contador');
+  const vazio = $('agenda-vazio');
+
+  if (contador) {
+    contador.textContent = `${lista.length} agendamento(s) encontrado(s)`;
+  }
+
+  if (!ul) return;
+
+  if (lista.length === 0) {
+    ul.replaceChildren();
+    if (vazio) vazio.hidden = false;
+    return;
+  }
+
+  if (vazio) vazio.hidden = true;
+
+  const itens = lista.map((item) => {
+    const expandido = expandidos.has(item.protocolo);
+    const valor = typeof item.calcularValor === 'function' ? item.calcularValor() : (item.servico?.preco || 0);
+    const statusClasse = item.status === STATUS.CONCLUIDO
+      ? 'item--concluido'
+      : item.status === STATUS.CANCELADO
+      ? 'item--cancelado'
+      : '';
+
+    const atrasado =
+      item.status === STATUS.AGENDADO &&
+      estaAtrasado(item.data, item.hora, agora);
+
+    const liClasses = ['item'];
+    if (statusClasse) liClasses.push(statusClasse);
+    if (atrasado) liClasses.push('item--atrasado');
+    if (expandido) liClasses.push('item--expandido');
+
+    // Botão de expandir cabeçalho
+    const toggleBtn = criar(
+      'button',
+      {
+        classe: 'item__toggle',
+        atributos: {
+          type: 'button',
+          'data-acao': 'alternar',
+          'aria-expanded': String(expandido),
+        },
+      },
+      criar('span', { classe: 'item__hora', texto: item.hora }),
+      criar('span', { classe: 'item__titulo', texto: `${item.pet} (${item.servico.nome})` }),
+      criar('span', {
+        classe: 'item__tutor',
+        texto: `Tutor: ${item.tutor} · Tel: ${item.telefone}`,
+      })
+    );
+
+    // Selos de status
+    const selosDiv = criar('div', { classe: 'item__selos' });
+    const seloStatusClasse = `selo selo--${normalizarStatusSelo(item.status)}`;
+    selosDiv.appendChild(criar('span', { classe: seloStatusClasse, texto: item.status }));
+
+    if (atrasado) {
+      selosDiv.appendChild(criar('span', { classe: 'selo selo--atrasado', texto: 'Atrasado' }));
+    }
+    selosDiv.appendChild(criar('span', { classe: 'item__valor', texto: formatarMoeda(valor) }));
+
+    const linhaTopo = criar('div', { classe: 'item__linha' }, toggleBtn, selosDiv);
+
+    // Botões de ação (Concluir / Cancelar)
+    const acoesDiv = criar('div', { classe: 'item__acoes' });
+    const btnConcluir = criar('button', {
+      classe: 'botao botao--secundario botao--pequeno',
+      texto: 'Concluir',
+      atributos: {
+        type: 'button',
+        'data-acao': 'concluir',
+      },
+    });
+    const btnCancelar = criar('button', {
+      classe: 'botao botao--perigo botao--pequeno',
+      texto: 'Cancelar',
+      atributos: {
+        type: 'button',
+        'data-acao': 'cancelar',
+      },
+    });
+
+    if (item.status !== STATUS.AGENDADO) {
+      btnConcluir.disabled = true;
+      btnCancelar.disabled = true;
+    }
+
+    acoesDiv.append(btnConcluir, btnCancelar);
+
+    // Detalhes expansíveis
+    const filhosLi = [linhaTopo, acoesDiv];
+    if (expandido) {
+      const dl = criar('dl', { classe: 'item__detalhes' });
+
+      dl.append(
+        criar('dt', { texto: 'Protocolo:' }),
+        criar('dd', { texto: item.protocolo }),
+        criar('dt', { texto: 'Espécie:' }),
+        criar('dd', { texto: item.especie || 'Não informada' }),
+        criar('dt', { texto: 'Local:' }),
+        criar('dd', {
+          texto:
+            item.domiciliar && typeof item.enderecoCompleto === 'function'
+              ? item.enderecoCompleto()
+              : item.domiciliar && item.endereco
+              ? `${item.endereco.logradouro}, ${item.endereco.numero} - ${item.endereco.cidade}/${item.endereco.uf}`
+              : 'Atendimento na loja',
+        })
+      );
+
+      if (item.observacoes) {
+        dl.append(
+          criar('dt', { texto: 'Observações:' }),
+          criar('dd', { texto: item.observacoes })
+        );
+      }
+
+      filhosLi.push(dl);
+    }
+
+    return criar('li', { classe: liClasses.join(' '), atributos: { 'data-protocolo': item.protocolo } }, ...filhosLi);
+  });
+
+  ul.replaceChildren(...itens);
 }
