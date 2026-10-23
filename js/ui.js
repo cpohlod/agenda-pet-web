@@ -561,3 +561,47 @@ export function renderizarFechamento(fechamento) {
     }
   }
 }
+
+
+/**
+ * Aplica o tema visual (claro ou escuro) e atualiza o estado e texto do botão de alternância (US08).
+ * @param {'claro'|'escuro'} tema
+ */
+export function aplicarTema(tema) {
+  const normalizado = tema === 'escuro' ? 'escuro' : 'claro';
+  document.documentElement.setAttribute('data-tema', normalizado);
+
+  const btnTema = $('btn-tema');
+  if (btnTema) {
+    if (normalizado === 'escuro') {
+      btnTema.textContent = 'Tema claro';
+      btnTema.setAttribute('aria-label', 'Alternar para tema claro');
+    } else {
+      btnTema.textContent = 'Tema escuro';
+      btnTema.setAttribute('aria-label', 'Alternar para tema escuro');
+    }
+  }
+}
+
+/**
+ * Exibe ou oculta o painel de exportação de dados com o JSON formatado (US08).
+ * @param {string} jsonTexto
+ */
+export function alternarExportacao(jsonTexto) {
+  const painel = $('exportacao');
+  const textarea = $('exportacao-texto');
+  if (!painel) return;
+
+  const estaVisivel = !painel.hidden;
+
+  if (estaVisivel && textarea && textarea.value === jsonTexto) {
+    painel.hidden = true;
+  } else {
+    if (textarea) {
+      textarea.value = jsonTexto;
+    }
+    painel.hidden = false;
+    textarea?.focus();
+    textarea?.select();
+  }
+}
