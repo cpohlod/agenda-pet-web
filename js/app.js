@@ -55,6 +55,10 @@ const estado = {
  */
 function salvar() {
   storage.salvarAgenda(estado.agenda);
+  const painelExportacao = ui.$('exportacao');
+  if (painelExportacao && !painelExportacao.hidden && ui.$('exportacao-texto')) {
+    ui.$('exportacao-texto').value = storage.exportarAgendaJSON(estado.agenda);
+  }
 }
 
 /**
@@ -440,12 +444,133 @@ function ligarEventos() {
     });
   }
 
-  // Filtros da agenda: Status
+  // Filtros da agenda: Status (US06, US08)
   const selectFiltroStatus = ui.$('filtro-status');
   if (selectFiltroStatus) {
     selectFiltroStatus.addEventListener('change', (e) => {
       estado.filtroStatus = e.target.value;
+      storage.salvarFiltro(estado.filtroStatus);
       atualizarAgenda();
+    });
+  }
+
+  // Alternância de tema claro/escuro (US08)
+  const btnTema = ui.$('btn-tema');
+  if (btnTema) {
+    btnTema.addEventListener('click', () => {
+      const temaAtual = storage.lerTema();
+      const novoTema = temaAtual === 'escuro' ? 'claro' : 'escuro';
+      ui.aplicarTema(novoTema);
+      storage.salvarTema(novoTema);
+      ui.mostrarToast(`Tema ${novoTema === 'escuro' ? 'escuro' : 'claro'} ativado.`, 'info');
+    });
+  }
+
+  // Botão Limpar meus dados (US08)
+  const btnLimpar = ui.$('btn-limpar');
+  if (btnLimpar) {
+    btnLimpar.addEventListener('click', () => {
+      const confirmou = window.confirm(
+        'Deseja realmente limpar todos os agendamentos salvos? Esta ação não pode ser desfeita.'
+      );
+      if (!confirmou) return;
+
+      storage.limparDados(true);
+      estado.agenda = [];
+      estado.expandidos.clear();
+      estado.selecionado = null;
+      estado.gerarProtocolo = criarGeradorProtocolo(0);
+
+      const painelExportacao = ui.$('exportacao');
+      if (painelExportacao) painelExportacao.hidden = true;
+
+      atualizarAgenda();
+      ui.mostrarToast('Todos os agendamentos salvos foram removidos.', 'sucesso');
+    });
+  }
+
+  // Botão Exportar dados (US08)
+  const btnExportar = ui.$('btn-exportar');
+  if (btnExportar) {
+    btnExportar.addEventListener('click', () => {
+      const jsonTexto = storage.exportarAgendaJSON(estado.agenda);
+      ui.alternarExportacao(jsonTexto);
+    });
+  }
+
+  // Botão Copiar JSON exportado (US08)
+  const btnCopiar = ui.$('btn-copiar');
+  if (btnCopiar) {
+    btnCopiar.addEventListener('click', async () => {
+      const textarea = ui.$('exportacao-texto');
+      const texto = textarea?.value || '';
+      if (!texto) return;
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(texto);
+        } else {
+          textarea.select();
+          document.execCommand('copy');
+        }
+        ui.mostrarToast('JSON copiado para a área de transferência!', 'sucesso');
+      } catch {
+        ui.mostrarToast('Não foi possível copiar automaticamente. Selecione e copie o texto.', 'erro');
+      }
+    });
+  }
+
+  // Botão Baixar JSON (US08 - bônus)
+  const btnBaixar = ui.$('btn-baixar');
+  if (btnBaixar) {
+    btnBaixar.addEventListener('click', () => {
+      const texto = ui.$('exportacao-texto')?.value || storage.exportarAgendaJSON(estado.agenda);
+      try {
+        const blob = new Blob([texto], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `agenda-${estado.dataAgenda || hojeISO()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        ui.mostrarToast('Arquivo JSON baixado com sucesso!', 'sucesso');
+      } catch {
+        ui.mostrarToast('Erro ao gerar o download do arquivo JSON.', 'erro');
+      }
+    });
+  }
+
+  // Botão Carregar agenda de exemplo (US08, US11)
+  const btnExemplo = ui.$('btn-exemplo');
+  if (btnExemplo) {
+    btnExemplo.addEventListener('click', async () => {
+      try {
+        const dadosExemplo = await api.carregarAgendaExemplo();
+        estado.agenda = [];
+        for (const item of dadosExemplo) {
+          try {
+            estado.agenda.push(criarAgendamento(item, estado.servicos));
+          } catch {
+            // ignora agendamentos com dados inconsistentes
+          }
+        }
+
+        const ultimo = ultimoNumeroProtocolo(estado.agenda);
+        estado.gerarProtocolo = criarGeradorProtocolo(ultimo);
+        salvar();
+        atualizarAgenda();
+
+        const painelExportacao = ui.$('exportacao');
+        if (painelExportacao && !painelExportacao.hidden && ui.$('exportacao-texto')) {
+          ui.$('exportacao-texto').value = storage.exportarAgendaJSON(estado.agenda);
+        }
+
+        ui.mostrarToast(`Agenda de exemplo carregada com ${estado.agenda.length} atendimentos!`, 'sucesso');
+      } catch (erro) {
+        ui.mostrarToast(erro.message || 'Erro ao carregar dados de exemplo.', 'erro');
+      }
     });
   }
 
@@ -507,6 +632,16 @@ function carregarAgendaSalva() {
  * Ponto de partida da aplicação.
  */
 async function iniciar() {
+  // Aplica a preferência de tema salva (US08)
+  const temaSalvo = storage.lerTema();
+  ui.aplicarTema(temaSalvo);
+
+  // Restaura o filtro de status salvo (US08)
+  estado.filtroStatus = storage.lerFiltro();
+  if (ui.$('filtro-status')) {
+    ui.$('filtro-status').value = estado.filtroStatus;
+  }
+
   const hoje = hojeISO();
   ui.definirDataMinima(hoje);
 

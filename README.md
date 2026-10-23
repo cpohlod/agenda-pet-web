@@ -37,6 +37,19 @@ Painel web responsivo e acessível para a gestão de agendamentos diários do pe
   - **Função de alta ordem com callbacks:** `filtrarAgendamentos(lista, ...criterios)` recebe funções callback independentes (`porStatus`, `porBusca` ou predicados customizados) combinadas por meio de `every()`.
   - **Fechamento consolidado do dia:** Cálculo de total de atendimentos, faturamento dos concluídos, valores a receber dos agendados, cancelados, agrupamento por serviço e próximo atendimento do dia. Utiliza métodos de array (`map`, `filter`, `find`, `every`, `some`, `reduce`, `sort`) e laços (`for...of`).
   - **Atualização em tempo real na interface:** Renderização automática dos cartões de fechamento e da tabela de atendimentos por serviço, além do banner de próximo atendimento.
+- **US08 — Persistência e Exportação dos Dados:**
+  - **Isolamento de persistência em `js/storage.js`:** Acesso centralizado ao `localStorage` com prefixo delimitador (`agendapet:`), garantindo que outras aplicações no mesmo domínio não sejam afetadas.
+  - **Tratamento robusto de erros com `try/catch`:** Tratamento para dados corrompidos ou sintaxe JSON inválida em `lerJSON()`, retornando valores padrão seguros sem interromper o funcionamento da aplicação. Tratamento de exceções em `salvarJSON()` (como estouro de cota `QuotaExceededError`).
+  - **Persistência de agendamentos, filtros e preferências:**
+    - Agenda persistida automaticamente a cada criação, alteração de status ou exclusão, serializando instâncias de classes com `paraJSON()`.
+    - Filtro de status ativo restaurado automaticamente ao recarregar a página.
+    - Preferência de interface (tema claro / escuro com atributo `data-tema`) persistida e reaplicada no carregamento inicial da página.
+  - **Botão "Limpar meus dados":** Exclui exclusivamente as chaves da aplicação (`agendapet:*`), mantendo os dados de outros sistemas intactos e preservando a escolha de tema do usuário.
+  - **Exportação e utilitários:**
+    - Botão "Exportar dados": renderiza o JSON estruturado e identado (2 espaços), exatamente no mesmo esquema de dados consumido pelos scripts Node.js (US11).
+    - Botão "Copiar": transfere o conteúdo do JSON para a área de transferência usando a API Clipboard ou fallback.
+    - Botão "Baixar JSON" (Bônus): gera e baixa o arquivo `agenda-AAAA-MM-DD.json` localmente via Blob e Object URL.
+    - Botão "Carregar exemplo": permite importar instantaneamente os dados de `data/agenda-exemplo.json` para demonstração e testes.
 
 ## Decisões de Negócio e Regras da Loja
 

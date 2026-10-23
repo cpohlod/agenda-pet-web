@@ -68,6 +68,20 @@ export function salvarAgenda(lista = []) {
 }
 
 /**
+ * Converte a lista de agendamentos em JSON formatado com 2 espaços (US08, US11).
+ * Mesma estrutura compatível com os scripts de Node.js.
+ * @param {Array} lista
+ * @returns {string}
+ */
+export function exportarAgendaJSON(lista = []) {
+  if (!Array.isArray(lista)) return '[]';
+  const objetos = lista.map((item) =>
+    typeof item.paraJSON === 'function' ? item.paraJSON() : item
+  );
+  return JSON.stringify(objetos, null, 2);
+}
+
+/**
  * Lê o filtro de status selecionado.
  * @returns {string}
  */
@@ -137,7 +151,7 @@ export function salvarFeriadosCache(ano, lista) {
 
 /**
  * Remove SOMENTE as chaves de dados criadas pela aplicação (com prefixo 'agendapet:').
- * Preserva o tema e outros itens não vinculados à agenda.
+ * Preserva o tema e outros itens não vinculados à agenda se manterTema for true.
  * @param {boolean} [manterTema=true]
  * @returns {number} Quantidade de chaves removidas
  */
