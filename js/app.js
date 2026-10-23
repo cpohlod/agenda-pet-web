@@ -41,6 +41,7 @@ const estado = {
   filtroStatus: 'todos',
   busca: '',
   expandidos: new Set(),
+  selecionado: null,
   gerarProtocolo: null,
   ultimoCepBuscado: '',
   feriado: null,
@@ -54,7 +55,7 @@ function salvar() {
 }
 
 /**
- * Redesenha a lista da agenda e contador com base no estado atual.
+ * Redesenha a lista da agenda e contador com base no estado atual (US06).
  */
 function atualizarAgenda() {
   const doDia = agendamentosDoDia(estado.agenda, estado.dataAgenda);
@@ -64,10 +65,14 @@ function atualizarAgenda() {
     porBusca(estado.busca)
   );
 
+  const temFiltros = (estado.filtroStatus !== 'todos') || Boolean(estado.busca.trim());
+
   ui.renderizarAgenda(visiveis, {
     expandidos: estado.expandidos,
+    selecionado: estado.selecionado,
     dataExibida: estado.dataAgenda,
     agora: new Date(),
+    temFiltros,
   });
 }
 
@@ -223,27 +228,42 @@ async function aoMudarData(evento) {
       }
     }
   } catch {
-    // Se a API falhar, avisar que não foi possível verificar feriados e permitir continuar
     ui.mostrarToast('Não foi possível verificar feriados para a data escolhida. Você pode prosseguir com o agendamento.', 'info');
   }
 }
 
 /**
- * Trata cliques dentro da lista da agenda (alternar detalhes, concluir, cancelar).
+ * Trata cliques dentro da lista da agenda (alternar detalhes, concluir, cancelar, selecionar) (US06).
  * @param {MouseEvent} evento
  */
 function aoClicarNaAgenda(evento) {
-  const alvo = evento.target.closest('[data-acao]');
-  if (!alvo) return;
-
-  const itemLi = alvo.closest('li[data-protocolo]');
+  const itemLi = evento.target.closest('li[data-protocolo]');
   if (!itemLi) return;
 
   const protocolo = itemLi.getAttribute('data-protocolo');
   const agendamento = estado.agenda.find((a) => a.protocolo === protocolo);
   if (!agendamento) return;
 
-  const acao = alvo.getAttribute('data-acao');
+  const alvoAcao = evento.target.closest('[data-acao]');
+  const acao = alvoAcao ? alvoAcao.getAttribute('data-acao') : null;
+
+  if (acao === 'concluir') {
+    evento.stopPropagation();
+    agendamento.alterarStatus(STATUS.CONCLUIDO);
+    salvar();
+    atualizarAgenda();
+    ui.mostrarToast(`Atendimento ${protocolo} (${agendamento.pet}) marcado como Concluído.`, 'sucesso');
+    return;
+  }
+
+  if (acao === 'cancelar') {
+    evento.stopPropagation();
+    agendamento.alterarStatus(STATUS.CANCELADO);
+    salvar();
+    atualizarAgenda();
+    ui.mostrarToast(`Atendimento ${protocolo} (${agendamento.pet}) foi Cancelado.`, 'info');
+    return;
+  }
 
   if (acao === 'alternar') {
     if (estado.expandidos.has(protocolo)) {
@@ -251,17 +271,78 @@ function aoClicarNaAgenda(evento) {
     } else {
       estado.expandidos.add(protocolo);
     }
-    atualizarAgenda();
-  } else if (acao === 'concluir') {
-    agendamento.alterarStatus(STATUS.CONCLUIDO);
-    salvar();
-    atualizarAgenda();
-    ui.mostrarToast(`Atendimento ${protocolo} marcado como Concluído.`, 'sucesso');
-  } else if (acao === 'cancelar') {
-    agendamento.alterarStatus(STATUS.CANCELADO);
-    salvar();
-    atualizarAgenda();
-    ui.mostrarToast(`Atendimento ${protocolo} foi Cancelado.`, 'info');
+  }
+
+  // Destaque de seleção do item ao clicar com o mouse
+  estado.selecionado = (estado.selecionado === protocolo) ? null : protocolo;
+  atualizarAgenda();
+}
+
+/**
+ * Trata teclas Enter e Espaço na lista da agenda para acessibilidade por teclado (US06).
+ * @param {KeyboardEvent} evento
+ */
+function aoTeclarNaAgenda(evento) {
+  if (evento.key !== 'Enter' && evento.key !== ' ') return;
+  const itemLi = evento.target.closest('li[data-protocolo]');
+  if (!itemLi) return;
+
+  // Se o foco está diretamente em um botão de ação, a ativação nativa do botão responde
+  if (evento.target.tagName === 'BUTTON') return;
+
+  evento.preventDefault();
+  const protocolo = itemLi.getAttribute('data-protocolo');
+  if (estado.expandidos.has(protocolo)) {
+    estado.expandidos.delete(protocolo);
+  } else {
+    estado.expandidos.add(protocolo);
+  }
+  estado.selecionado = (estado.selecionado === protocolo) ? null : protocolo;
+  atualizarAgenda();
+}
+
+/**
+ * Trata os atalhos de teclado globais ("N", "/", "Esc") (US06).
+ * @param {KeyboardEvent} evento
+ */
+function aoDigitarTeclado(evento) {
+  const elementoAtivo = document.activeElement;
+  const emCampo = ['INPUT', 'TEXTAREA', 'SELECT'].includes(elementoAtivo?.tagName);
+
+  // Atalho "Esc" (limpa a busca em tempo real)
+  if (evento.key === 'Escape') {
+    const inputBusca = ui.$('busca');
+    if (inputBusca && (inputBusca.value || elementoAtivo === inputBusca)) {
+      evento.preventDefault();
+      inputBusca.value = '';
+      estado.busca = '';
+      atualizarAgenda();
+      inputBusca.blur();
+      return;
+    }
+  }
+
+  // Ignora atalhos de letra se o usuário estiver digitando em um campo de texto
+  if (emCampo) return;
+
+  // Atalho "/" (foca o campo de busca sem digitar a barra)
+  if (evento.key === '/') {
+    evento.preventDefault();
+    const inputBusca = ui.$('busca');
+    if (inputBusca) {
+      inputBusca.focus();
+      inputBusca.select();
+    }
+    return;
+  }
+
+  // Atalho "N" (vai ao formulário, focando o primeiro campo: Tutor)
+  if (evento.key.toLowerCase() === 'n') {
+    evento.preventDefault();
+    const inputTutor = ui.$('tutor');
+    if (inputTutor) {
+      inputTutor.focus();
+    }
   }
 }
 
@@ -329,13 +410,14 @@ function ligarEventos() {
     inputData.addEventListener('input', aoMudarData);
   }
 
-  // Interação com a agenda (expandir/concluir/cancelar)
+  // Interação com a agenda com mouse e teclado (US06)
   const ulAgenda = ui.$('lista-agenda');
   if (ulAgenda) {
     ulAgenda.addEventListener('click', aoClicarNaAgenda);
+    ulAgenda.addEventListener('keydown', aoTeclarNaAgenda);
   }
 
-  // Filtros da agenda
+  // Filtros da agenda: Data
   const inputDataAgenda = ui.$('data-agenda');
   if (inputDataAgenda) {
     inputDataAgenda.addEventListener('input', (e) => {
@@ -344,6 +426,7 @@ function ligarEventos() {
     });
   }
 
+  // Filtros da agenda: Status
   const selectFiltroStatus = ui.$('filtro-status');
   if (selectFiltroStatus) {
     selectFiltroStatus.addEventListener('change', (e) => {
@@ -352,13 +435,19 @@ function ligarEventos() {
     });
   }
 
+  // Busca em tempo real por tutor ou pet (input e keyup) (US06)
   const inputBusca = ui.$('busca');
   if (inputBusca) {
-    inputBusca.addEventListener('input', (e) => {
+    const aoBuscar = (e) => {
       estado.busca = e.target.value;
       atualizarAgenda();
-    });
+    };
+    inputBusca.addEventListener('input', aoBuscar);
+    inputBusca.addEventListener('keyup', aoBuscar);
   }
+
+  // Atalhos de teclado globais ("N", "/", "Esc") (US06)
+  document.addEventListener('keydown', aoDigitarTeclado);
 }
 
 /**

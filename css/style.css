@@ -279,8 +279,10 @@ a { color: var(--primaria); }
   background: var(--superficie);
   border: 1px solid var(--borda);
   border-left: 6px solid var(--primaria);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
   border-radius: var(--raio);
 }
+.item:hover { background: var(--superficie-2); }
 .item--concluido { border-left-color: var(--sucesso); }
 .item--cancelado { border-left-color: var(--erro); opacity: 0.8; }
 .item--atrasado { border-left-color: var(--acento); background: var(--alerta-fundo); }

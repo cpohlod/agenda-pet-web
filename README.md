@@ -22,6 +22,14 @@ Painel web responsivo e acessível para a gestão de agendamentos diários do pe
   - Cache no `localStorage` com registro de data da consulta e validade de 30 dias para evitar requisições repetidas.
   - Exibição do nome do feriado e bloqueio do salvamento sem a marcação explícita de "Agendar mesmo assim".
   - Resiliência: caso a API de feriados falhe, um aviso é emitido e o sistema permite continuar o agendamento normalmente.
+- **US06 — Agenda do Dia (Lista, Busca, Filtros e Atalhos):**
+  - Renderização dinâmica e segura via DOM (`createElement`, `textContent`, `classList`) sem uso de `innerHTML`.
+  - Ordenação automática dos agendamentos do dia por horário e status (Agendado, Concluído, Cancelado).
+  - Interação com mouse: botões para concluir e cancelar atendimentos, efeito hover e destaque com realce ao selecionar itens.
+  - Busca em tempo real por tutor ou pet via eventos `input` e `keyup`.
+  - Atalhos globais de teclado: `N` para focar no primeiro campo do formulário, `/` para focar e selecionar a busca, e `Esc` para limpar a busca.
+  - Acessibilidade total por teclado com `Tab`, `Enter` e `Espaço` em todos os controles interativos.
+  - Filtro por status (`todos`, `Agendado`, `Concluído`, `Cancelado`), contador dinâmico de agendamentos e mensagem dedicada para lista vazia.
 
 ## Decisões de Negócio e Regras da Loja
 
