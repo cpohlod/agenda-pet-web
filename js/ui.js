@@ -2,7 +2,7 @@
    ui.js — DESENHA NA TELA (DOM)   (tickets: US02, US03, US04, US05, US06, US09)
    ========================================================================== */
 
-import { formatarMoeda, formatarDataBR, estaAtrasado, minutosAte } from './dominio/regras.js';
+import { formatarMoeda, formatarDataBR, estaAtrasado, minutosAte, horaAgora } from './dominio/regras.js';
 import { STATUS } from './dominio/agendamento.js';
 
 /**
@@ -91,14 +91,29 @@ export function mostrarToast(texto, tipo = 'sucesso', duracaoMs = 4000) {
   const toast = $('toast');
   if (!toast) return;
 
-  clearTimeout(timerToast);
+  if (timerToast) {
+    clearTimeout(timerToast);
+    timerToast = null;
+  }
   toast.className = `toast toast--${tipo}`;
   toast.textContent = texto;
   toast.hidden = false;
 
   timerToast = setTimeout(() => {
     toast.hidden = true;
+    timerToast = null;
   }, duracaoMs);
+}
+
+export function fecharToast() {
+  const toast = $('toast');
+  if (timerToast) {
+    clearTimeout(timerToast);
+    timerToast = null;
+  }
+  if (toast) {
+    toast.hidden = true;
+  }
 }
 
 /**
@@ -474,10 +489,15 @@ export function atualizarBannerProximo(proximo, agora = new Date()) {
   }
 
   const minutos = minutosAte(proximo.data, proximo.hora, agora);
-  const infoTempo = minutos > 0 ? ` (em ${minutos} min)` : minutos === 0 ? ' (agora)' : '';
   const tipo = proximo.domiciliar ? ' [Domiciliar]' : '';
 
-  el.textContent = `Próximo atendimento: ${proximo.hora} — ${proximo.pet} (${proximo.tutor}) · ${proximo.servico?.nome || 'Serviço'}${tipo}${infoTempo}`;
+  if (minutos > 0) {
+    el.textContent = `Próximo atendimento em ${minutos} min: ${proximo.hora} — ${proximo.pet} (${proximo.tutor}) · ${proximo.servico?.nome || 'Serviço'}${tipo}`;
+  } else if (minutos === 0) {
+    el.textContent = `Próximo atendimento agora: ${proximo.hora} — ${proximo.pet} (${proximo.tutor}) · ${proximo.servico?.nome || 'Serviço'}${tipo}`;
+  } else {
+    el.textContent = `Próximo atendimento: ${proximo.hora} — ${proximo.pet} (${proximo.tutor}) · ${proximo.servico?.nome || 'Serviço'}${tipo}`;
+  }
 }
 
 /**
@@ -603,5 +623,58 @@ export function alternarExportacao(jsonTexto) {
     painel.hidden = false;
     textarea?.focus();
     textarea?.select();
+  }
+}
+
+
+/**
+ * Atualiza o relógio no topo da página com o horário atual (US09).
+ * @param {Date} [agora=new Date()]
+ */
+export function atualizarRelogio(agora = new Date()) {
+  const elHora = $('relogio')?.querySelector('.relogio__hora') || document.querySelector('.relogio__hora');
+  if (elHora) {
+    elHora.textContent = horaAgora(agora);
+  }
+}
+
+/**
+ * Exibe ou oculta o aviso visual de lembrete de atendimento próximo (US09).
+ * Disparado quando faltam 15 minutos ou menos para um atendimento.
+ * @param {{ agendamento: object, minutos: number } | null} lembrete
+ */
+export function mostrarLembrete(lembrete) {
+  const el = $('lembrete');
+  if (!el) return;
+
+  if (!lembrete) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+
+  const { agendamento, minutos } = lembrete;
+  const tempoTexto = minutos === 0 ? 'começando agora' : `em ${minutos} min (às ${agendamento.hora})`;
+  const tipo = agendamento.domiciliar ? ' [Domiciliar]' : '';
+
+  el.textContent = `⏰ Lembrete de atendimento próximo: ${agendamento.pet} (${agendamento.tutor}) · ${agendamento.servico?.nome || 'Serviço'}${tipo} — ${tempoTexto}!`;
+  el.hidden = false;
+}
+
+/**
+ * Atualiza o estado visual e atributos de acessibilidade do botão de pausar/retomar lembretes (US09).
+ * @param {boolean} ativo True se os lembretes periódicos estiverem ativos, false se pausados
+ */
+export function atualizarBotaoLembretes(ativo) {
+  const btn = $('btn-lembretes');
+  if (!btn) return;
+
+  btn.setAttribute('aria-pressed', String(ativo));
+  if (ativo) {
+    btn.textContent = 'Pausar lembretes';
+    btn.setAttribute('aria-label', 'Pausar lembretes periódicos');
+  } else {
+    btn.textContent = 'Retomar lembretes';
+    btn.setAttribute('aria-label', 'Retomar lembretes periódicos');
   }
 }

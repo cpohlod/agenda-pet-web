@@ -27,6 +27,9 @@ import {
   temConflito,
   formatarMoeda,
   acharFeriado,
+  minutosAte,
+  estaAtrasado,
+  buscarLembreteProximo,
 } from '../js/dominio/regras.js';
 
 import {
@@ -448,4 +451,71 @@ test('montarLinhasRelatorio gera as linhas formatadas do fechamento', () => {
   assert.ok(linhas.some((l) => l.includes('Total de atendimentos: 3')));
   assert.ok(linhas.some((l) => l.includes('Banho simples')));
   assert.ok(linhas.some((l) => l.includes('120,00')));
+});
+
+test('timers: minutosAte e estaAtrasado calculam a diferenca temporal corretamente', () => {
+  const referencia = new Date('2026-10-25T10:00:00');
+
+  // No futuro: faltam 30 minutos
+  assert.equal(minutosAte('2026-10-25', '10:30', referencia), 30);
+  assert.equal(estaAtrasado('2026-10-25', '10:30', referencia), false);
+
+  // No presente: 0 minutos
+  assert.equal(minutosAte('2026-10-25', '10:00', referencia), 0);
+  assert.equal(estaAtrasado('2026-10-25', '10:00', referencia), false);
+
+  // No passado: atrasado há 15 minutos
+  assert.equal(minutosAte('2026-10-25', '09:45', referencia), -15);
+  assert.equal(estaAtrasado('2026-10-25', '09:45', referencia), true);
+});
+
+test('timers: buscarLembreteProximo dispara apenas quando faltam 15 min ou menos', () => {
+  const agora = new Date('2026-10-25T09:48:00'); // 09:48
+
+  const lista = [
+    new Agendamento({
+      protocolo: 'AP-0001',
+      tutor: 'Tutor 1',
+      telefone: '(11) 91111-2222',
+      pet: 'Pet 1',
+      especie: 'Cão',
+      servico: servicoBanho,
+      data: '2026-10-25',
+      hora: '09:30', // já passou (atrasado)
+      status: STATUS.AGENDADO,
+    }),
+    new Agendamento({
+      protocolo: 'AP-0002',
+      tutor: 'Tutor 2',
+      telefone: '(11) 92222-3333',
+      pet: 'Pet 2',
+      especie: 'Cão',
+      servico: servicoBanho,
+      data: '2026-10-25',
+      hora: '10:00', // faltam 12 min (<= 15) -> DEVE disparar lembrete!
+      status: STATUS.AGENDADO,
+    }),
+    new Agendamento({
+      protocolo: 'AP-0003',
+      tutor: 'Tutor 3',
+      telefone: '(11) 93333-4444',
+      pet: 'Pet 3',
+      especie: 'Cão',
+      servico: servicoBanho,
+      data: '2026-10-25',
+      hora: '11:00', // faltam 72 min (> 15) -> não deve disparar
+      status: STATUS.AGENDADO,
+    }),
+  ];
+
+  const resultado = buscarLembreteProximo(lista, agora, 15);
+  assert.ok(resultado);
+  assert.equal(resultado.agendamento.protocolo, 'AP-0002');
+  assert.equal(resultado.minutos, 12);
+
+  // Se o agendamento de 10:00 for concluído, não deve mais disparar para ele
+  lista[1].alterarStatus(STATUS.CONCLUIDO);
+  const resultadoAposConclusao = buscarLembreteProximo(lista, agora, 15);
+  // O próximo pendente é 11:00 (faltam 72 min), logo resultado deve ser null
+  assert.equal(resultadoAposConclusao, null);
 });

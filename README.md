@@ -50,6 +50,13 @@ Painel web responsivo e acessível para a gestão de agendamentos diários do pe
     - Botão "Copiar": transfere o conteúdo do JSON para a área de transferência usando a API Clipboard ou fallback.
     - Botão "Baixar JSON" (Bônus): gera e baixa o arquivo `agenda-AAAA-MM-DD.json` localmente via Blob e Object URL.
     - Botão "Carregar exemplo": permite importar instantaneamente os dados de `data/agenda-exemplo.json` para demonstração e testes.
+- **US09 — Relógio e Lembretes de Atendimento (Timers):**
+  - **Temporizador periódico com `setInterval`:** Atualização periódica a cada 30 segundos sincronizando o relógio (`.relogio__hora`) e recalculando a agenda do dia.
+  - **Destaque automático de atendimentos atrasados:** Identifica agendamentos com horário anterior ao momento atual que ainda estejam com status `Agendado`, aplicando as classes visuais `.item--atrasado` e o selo `.selo--atrasado`.
+  - **Cálculo dinâmico do próximo atendimento:** O banner da agenda exibe em tempo real o texto `"Próximo atendimento em X min: ..."` para atendimentos futuros e `"Próximo atendimento agora: ..."` para o atendimento corrente.
+  - **Lembrete visual antecipado (15 minutos ou menos):** Exibição dinâmica do banner de alerta `#lembrete` sempre que um agendamento do dia estiver a 15 minutos ou menos do seu início (`CONFIG.minutoLembrete = 15`), preparando o atendente para a chegada do pet.
+  - **Controle de Pausar e Retomar com `clearInterval`:** Botão interativo `#btn-lembretes` permitindo pausar e retomar os lembretes periódicos com atualização dinâmica de estado WAI-ARIA (`aria-pressed`).
+  - **Notificações temporárias com `setTimeout` (Toast):** Sistema de toast flutuante com desaparecimento automático após 4 segundos, prevenindo timers acumulados/duplicados através de `clearTimeout` antes de cada novo agendamento.
 
 ## Decisões de Negócio e Regras da Loja
 
