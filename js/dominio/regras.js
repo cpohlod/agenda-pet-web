@@ -2,7 +2,7 @@
    regras.js — VALIDAÇÕES E FUNÇÕES DE APOIO   (tickets: US03, US05, US07)
    ========================================================================== */
 
-import { CONFIG, normalizarTexto } from './agendamento.js';
+import { CONFIG, STATUS, normalizarTexto } from './agendamento.js';
 
 /**
  * Retorna a data de hoje no padrão ISO "AAAA-MM-DD".
@@ -90,6 +90,28 @@ export function minutosAte(data, hora, agora = new Date()) {
  */
 export function estaAtrasado(data, hora, agora = new Date()) {
   return minutosAte(data, hora, agora) < 0;
+}
+
+/**
+ * Localiza o primeiro atendimento ativo do dia que necessita de aviso (faltando 15 min ou menos) (US09).
+ * @param {Array} listaDoDia Lista de agendamentos do dia
+ * @param {Date} [agora=new Date()] Momento atual de referência
+ * @param {number} [limiteMin=15] Limite em minutos para disparo do lembrete (padrão CONFIG.minutoLembrete)
+ * @returns {{ agendamento: object, minutos: number } | null}
+ */
+export function buscarLembreteProximo(listaDoDia = [], agora = new Date(), limiteMin = 15) {
+  if (!Array.isArray(listaDoDia)) return null;
+  const agendados = listaDoDia
+    .filter((a) => a && a.status === STATUS.AGENDADO)
+    .sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
+
+  for (const ag of agendados) {
+    const min = minutosAte(ag.data, ag.hora, agora);
+    if (min >= 0 && min <= limiteMin) {
+      return { agendamento: ag, minutos: min };
+    }
+  }
+  return null;
 }
 
 /**

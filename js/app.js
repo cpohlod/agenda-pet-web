@@ -7,6 +7,7 @@ import * as ui from './ui.js';
 import * as storage from './storage.js';
 
 import {
+  CONFIG,
   STATUS,
   Servico,
   criarAgendamento,
@@ -23,6 +24,7 @@ import {
   formatarCep,
   acharFeriado,
   horaAgora,
+  buscarLembreteProximo,
 } from './dominio/regras.js';
 
 import {
@@ -48,7 +50,11 @@ const estado = {
   gerarProtocolo: null,
   ultimoCepBuscado: '',
   feriado: null,
+  lembretesAtivos: true,
 };
+
+let timerPeriodico = null;
+const INTERVALO_LEMBRETES_MS = 30000;
 
 /**
  * Salva a agenda atual no storage.
@@ -62,9 +68,10 @@ function salvar() {
 }
 
 /**
- * Redesenha a lista da agenda e contador com base no estado atual (US06).
+ * Redesenha a lista da agenda e contador com base no estado atual (US06, US09).
+ * @param {Date} [agora=new Date()]
  */
-function atualizarAgenda() {
+function atualizarAgenda(agora = new Date()) {
   const doDia = agendamentosDoDia(estado.agenda, estado.dataAgenda);
   const visiveis = filtrarAgendamentos(
     doDia,
@@ -72,7 +79,6 @@ function atualizarAgenda() {
     porBusca(estado.busca)
   );
 
-  const agora = new Date();
   const temFiltros = (estado.filtroStatus !== 'todos') || Boolean(estado.busca.trim());
 
   ui.renderizarAgenda(visiveis, {
@@ -83,7 +89,7 @@ function atualizarAgenda() {
     temFiltros,
   });
 
-  // Atualiza banner do próximo atendimento (US06, US07)
+  // Atualiza banner do próximo atendimento (US06, US07, US09)
   const horaCorte = (estado.dataAgenda === hojeISO()) ? horaAgora(agora) : '00:00';
   const proximo = proximoAtendimento(doDia, horaCorte);
   ui.atualizarBannerProximo(proximo, agora);
@@ -91,6 +97,64 @@ function atualizarAgenda() {
   // Calcula e renderiza o fechamento consolidado do dia (US07)
   const resumo = calcularFechamento(estado.agenda, estado.dataAgenda, horaCorte);
   ui.renderizarFechamento(resumo);
+
+  // Atualiza o lembrete de atendimento próximo (em 15 min ou menos) (US09)
+  if (estado.lembretesAtivos) {
+    const doDiaHoje = agendamentosDoDia(estado.agenda, hojeISO());
+    const lembrete = buscarLembreteProximo(doDiaHoje, agora, CONFIG.minutoLembrete || 15);
+    ui.mostrarLembrete(lembrete);
+  } else {
+    ui.mostrarLembrete(null);
+  }
+}
+
+/**
+ * Ciclo periódico disparado pelo setInterval a cada 30 segundos (US09).
+ * Atualiza o relógio, o próximo atendimento e destaca atendimentos atrasados.
+ */
+function cicloPeriodico() {
+  const agora = new Date();
+  ui.atualizarRelogio(agora);
+  atualizarAgenda(agora);
+}
+
+/**
+ * Inicia o temporizador periódico com setInterval (US09).
+ */
+function iniciarTemporizador() {
+  if (timerPeriodico) {
+    clearInterval(timerPeriodico);
+  }
+  cicloPeriodico();
+  timerPeriodico = setInterval(cicloPeriodico, INTERVALO_LEMBRETES_MS);
+  estado.lembretesAtivos = true;
+  ui.atualizarBotaoLembretes(true);
+}
+
+/**
+ * Pausa o temporizador periódico utilizando clearInterval (US09).
+ */
+function pausarTemporizador() {
+  if (timerPeriodico) {
+    clearInterval(timerPeriodico);
+    timerPeriodico = null;
+  }
+  estado.lembretesAtivos = false;
+  ui.atualizarBotaoLembretes(false);
+  ui.mostrarLembrete(null);
+}
+
+/**
+ * Alterna entre pausar e retomar os lembretes periódicos (US09).
+ */
+function alternarLembretes() {
+  if (estado.lembretesAtivos) {
+    pausarTemporizador();
+    ui.mostrarToast('Lembretes periódicos pausados.', 'info');
+  } else {
+    iniciarTemporizador();
+    ui.mostrarToast('Lembretes periódicos retomados.', 'info');
+  }
 }
 
 /**
@@ -466,6 +530,12 @@ function ligarEventos() {
     });
   }
 
+  // Controle de pausar/retomar lembretes periódicos (US09)
+  const btnLembretes = ui.$('btn-lembretes');
+  if (btnLembretes) {
+    btnLembretes.addEventListener('click', alternarLembretes);
+  }
+
   // Botão Limpar meus dados (US08)
   const btnLimpar = ui.$('btn-limpar');
   if (btnLimpar) {
@@ -657,6 +727,9 @@ async function iniciar() {
   if (ui.$('data')?.value) {
     aoMudarData();
   }
+
+  // Inicia relógio e lembretes periódicos com setInterval (US09)
+  iniciarTemporizador();
 }
 
 // Inicializa a aplicação
