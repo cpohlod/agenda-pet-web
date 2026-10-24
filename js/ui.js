@@ -65,7 +65,6 @@ export function mostrarEstado(el, tipo, texto, aoTentarNovamente) {
         atributos: { type: 'button' },
       }
     );
-    btn.style.marginLeft = '12px';
     btn.addEventListener('click', aoTentarNovamente);
     el.appendChild(btn);
   }
