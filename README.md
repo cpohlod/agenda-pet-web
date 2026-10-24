@@ -57,6 +57,44 @@ Painel web responsivo e acessível para a gestão de agendamentos diários do pe
   - **Lembrete visual antecipado (15 minutos ou menos):** Exibição dinâmica do banner de alerta `#lembrete` sempre que um agendamento do dia estiver a 15 minutos ou menos do seu início (`CONFIG.minutoLembrete = 15`), preparando o atendente para a chegada do pet.
   - **Controle de Pausar e Retomar com `clearInterval`:** Botão interativo `#btn-lembretes` permitindo pausar e retomar os lembretes periódicos com atualização dinâmica de estado WAI-ARIA (`aria-pressed`).
   - **Notificações temporárias com `setTimeout` (Toast):** Sistema de toast flutuante com desaparecimento automático após 4 segundos, prevenindo timers acumulados/duplicados através de `clearTimeout` antes de cada novo agendamento.
+- **US10 — Layout Responsivo e Identidade Visual (CSS, Flexbox e Especificidade):**
+  - **Flexbox como base de layout:** Estruturação integral com Flexbox no cabeçalho (`.topo`, `.topo__marca`, `.topo__ferramentas`, `.nav`), formulário (`.form`, `.linha`, `.campo`, `.endereco`), listas (`.servicos`, `.agenda`, `.item`, `.item__detalhes`), cartões (`.cartao`, `.resumo`, `.resumo__item`) e rodapé (`.rodape`).
+  - **Mobile-first e responsividade sem rolagem horizontal:** Folha de estilos base projetada para telas pequenas (validada em **360px**), evoluindo progressivamente com media queries para **tablet (`min-width: 768px`)** e **desktop (`min-width: 1024px` e `min-width: 1280px`)**, garantindo ausência de barra de rolagem horizontal em todas as resoluções.
+  - **Design Tokens via Custom Properties (`:root`):** Variáveis CSS padronizadas para **cores** (identidade visual *Patinhas & Cia* em verde-petróleo `#00695c` e âmbar `#ffb300`, além do tema escuro completo `[data-tema="escuro"]`), **espaçamentos** (`--espaco-2xs` a `--espaco-xl`, raios de borda e `--alvo-toque: 44px`) e **tipografia** (famílias `--fonte` e `--fonte-mono`, escala modular `--texto-xs` a `--texto-2xl`, pesos e entrelinhas).
+  - **Especificidade sob controle:** Zero ocorrências de `!important`, zero seletores por `#id` na folha de estilos e ausência de atributos `style` inline no HTML, mantendo seletores planos de baixa especificidade (padrão BEM).
+  - **Acessibilidade visual e ergonômica:** Estados `:hover` e `:focus-visible` (`outline: 3px solid var(--foco)`) de alta visibilidade, alvos de toque confortáveis (mínimo de `44px` de altura) e relação de contraste de texto superior a **4,5:1** (WCAG AA) em todos os componentes.
+
+---
+
+## Arquitetura CSS, Especificidade e Resolução de Conflitos de Estilo (US10)
+
+### 1. Estratégia Mobile-First e Breakpoints
+A folha de estilos (`css/style.css`) foi construída com abordagem **mobile-first**:
+- **Base Mobile (`>= 360px`):** Todo o layout empilha verticalmente (`flex-direction: column`), com campos ocupando 100% da largura disponível, alvos de toque mínimos de `44px` (`--alvo-toque`) e proteção contra estouro horizontal (`min-width: 0` em itens flexíveis e `overflow-x: hidden`).
+- **Breakpoint 1 — Tablet (`@media (min-width: 768px)`):** O cabeçalho (`.topo`) distribui marca e ferramentas lado a lado, campos agrupados em `.linha` e `.filtros` passam a dividir a mesma fileira horizontal (`flex-direction: row; flex-wrap: wrap`), itens da agenda alinham cabeçalho e selos na mesma linha e os cartões de resumo do fechamento distribuem-se em 3 colunas (`calc(33.333% - var(--espaco-xs))`).
+- **Breakpoint 2 — Desktop (`@media (min-width: 1024px)` e `@media (min-width: 1280px)`):** O painel principal (`.painel`) divide-se em duas colunas lado a lado (`coluna--form` à esquerda e `coluna--agenda` à direita com maior proporção flexível), e o cabeçalho alinha marca, ferramentas e navegação em uma única barra horizontal.
+
+### 2. Controle de Especificidade (Sem `!important` e Sem `#id`)
+Para evitar "guerras de especificidade", adotamos a nomenclatura **BEM (Block, Element, Modifier)**:
+- Seletores de classe plana (`.cartao`, `.campo__entrada`, `.botao--principal`) possuem especificidade constante e baixa (`0,1,0`).
+- Nenhum seletor utiliza `#id` (`0,1,0,0`) ou `style` inline (`1,0,0,0`), reservando os atributos `id` do HTML exclusivamente para âncoras de acessibilidade (`aria-labelledby`, `aria-describedby`, `for`) e ganchos de manipulação no JavaScript.
+- Nenhuma regra utiliza `!important`.
+
+### 3. Conflito de Estilos Encontrado e Como Foi Resolvido
+
+#### Conflito Principal: Atributo HTML `[hidden]` vs. Componentes com `display: flex`
+- **O problema:** No HTML semântico da aplicação, diversos contêineres iniciam ocultos através do atributo nativo `hidden` — como o grupo de endereço domiciliar (`<fieldset class="endereco" id="grupo-endereco" hidden>`), o painel de exportação (`<div class="exportacao" id="exportacao" hidden>`) e os banners de feedback (`<div class="status" hidden>`, `<div class="aviso" hidden>`). Por padrão, o navegador (*User-Agent Stylesheet*) aplica `[hidden] { display: none; }` com especificidade mínima. No entanto, ao convertermos todos esses blocos para Flexbox (`.endereco { display: flex; }`, `.exportacao { display: flex; }`, `.status { display: flex; }`), o seletor de classe da nossa folha de estilo (`0,1,0`) **sobrescrevia** o `display: none` nativo do navegador. Como consequência, os blocos que deveriam estar ocultos continuavam visíveis na tela mesmo possuindo o atributo `hidden`.
+- **Por que não usar `!important`:** A solução mais comum na web é escrever `[hidden] { display: none !important; }`, mas o uso de `!important` quebra a cascata natural do CSS e viola a diretriz arquitetural do projeto.
+- **Como resolvemos com controle de especificidade e cascata:**
+  1. Mantivemos todos os seletores de blocos de layout com especificidade de uma única classe (`0,1,0`, como `.endereco`, `.exportacao`, `.status` e `.lembrete`).
+  2. Declaramos explicitamente a regra `[hidden] { display: none; }` na **última linha** do arquivo `css/style.css`.
+  3. Como um seletor de atributo (`[hidden]`) possui exatamente a **mesma especificidade (`0,1,0`)** que um seletor de classe (`.endereco`), o navegador aplica o critério de desempate da **ordem na cascata**: por vir por último no arquivo, `[hidden] { display: none; }` vence qualquer `display: flex` declarado anteriormente, ocultando os elementos com perfeição sem precisar de `!important` nem de seletores compostos.
+
+#### Segundo Conflito: Sobreposição de estados nos cartões da agenda (`.item`)
+- **O problema:** Um item da agenda (`.item`) pode acumular múltiplas classes de estado simultaneamente: status (`.item--concluido` ou `.item--cancelado`), alerta temporal (`.item--atrasado`), detalhes abertos (`.item--expandido`) e interação de ponteiro (`.item:hover`). Todas essas regras disputam as propriedades `border-left-color` e `background`.
+- **Como resolvemos:** Em vez de encadear seletores de alta especificidade (como `ul.agenda li.item.item--atrasado`), mantivemos seletores planos (`0,1,0`) e ordenamos a declaração na folha de estilos segundo a prioridade visual de negócio: base (`.item`) → status concluído/cancelado → alerta de atraso (`.item--atrasado`) → estado expandido (`.item--expandido`). Assim, a cascata resolve a precedência de forma limpa e previsível.
+
+---
 
 ## Decisões de Negócio e Regras da Loja
 

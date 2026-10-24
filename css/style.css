@@ -1,15 +1,27 @@
 /* ==========================================================================
-   AgendaPet Web — Patinhas & Cia | Folha de estilo
-   Mobile-first: o CSS base vale para o celular; as media queries ACRESCENTAM.
-   Regras: layout com Flexbox · cores e medidas em variáveis · sem !important ·
-   sem seletores de id (só classes, para manter a especificidade baixa).
+   AgendaPet Web — Patinhas & Cia | Folha de Estilo (US10)
+   Arquitetura:
+   - Mobile-first: o CSS base atende telas a partir de 360px; media queries
+     acrescentam regras progressivamente para tablet (768px) e desktop (1024px / 1280px).
+   - Flexbox como base de layout (cabeçalho, formulário, listas, cartões e rodapé).
+   - Custom Properties (variáveis CSS) para cores, espaçamentos e tipografia.
+   - Especificidade sob controle: ZERO !important, ZERO seletores de #id,
+     seletores planos de baixa especificidade (BEM).
+   - Acessibilidade: contraste mínimo >= 4,5:1 (WCAG AA), :focus-visible nítido,
+     estados :hover claros e alvos de toque confortáveis (>= 44px).
    ========================================================================== */
 
-/* 1. TOKENS (variáveis CSS) --------------------------------------------------
-   Contraste mínimo de texto: 4,5:1 (WCAG AA). Ex.: branco sobre --primaria
-   (#00695c) = 6,5:1 · --texto sobre --fundo = ~14:1 · --texto-suave sobre
-   --superficie = 6,3:1.                                                      */
+/* 1. TOKENS (Variáveis CSS: Cores, Espaçamentos e Tipografia) ----------------
+   Contraste mínimo de texto aferido (WCAG AA >= 4,5:1):
+   - #ffffff sobre --primaria (#00695c)       = 6,5:1
+   - --texto (#1c2b2d) sobre --fundo (#f3f7f6)= 14,1:1
+   - --texto-suave (#4a5d60) sobre #ffffff    = 6,8:1
+   - --erro (#b3261e) sobre --erro-fundo      = 6,9:1
+   - --sucesso (#1b5e20) sobre --sucesso-fundo= 7,3:1
+   - --info (#0d47a1) sobre --info-fundo      = 7,8:1
+   - --alerta-texto (#5c3b00) sobre #fff3cd   = 7,4:1                        */
 :root {
+  /* Paleta da Identidade Visual — Patinhas & Cia */
   --primaria: #00695c;
   --primaria-escura: #004d40;
   --sobre-primaria: #ffffff;
@@ -21,21 +33,55 @@
   --superficie-2: #e8f1ef;
   --borda: #c4d3d0;
   --foco: #0b57d0;
+
+  /* Cores de feedback semântico */
   --erro: #b3261e;
   --erro-fundo: #fdecea;
   --sucesso: #1b5e20;
   --sucesso-fundo: #e6f4ea;
   --info: #0d47a1;
   --info-fundo: #e3f0fd;
-  --alerta-texto: #6b4500;
+  --alerta-texto: #5c3b00;
   --alerta-fundo: #fff3cd;
-  --sombra: 0 1px 3px rgba(0, 0, 0, 0.12);
-  --raio: 10px;
+
+  /* Espaçamentos e dimensões */
+  --espaco-2xs: 4px;
+  --espaco-xs: 8px;
+  --espaco-sm: 12px;
   --espaco: 16px;
+  --espaco-md: 16px;
+  --espaco-lg: 20px;
+  --espaco-xl: 24px;
+  --raio-sm: 6px;
+  --raio-md: 8px;
+  --raio: 10px;
+  --raio-pilula: 999px;
+  --alvo-toque: 44px;
+  --largura-max: 1280px;
+
+  /* Tipografia */
   --fonte: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fonte-mono: Consolas, Menlo, Monaco, monospace;
+  --texto-xs: 0.8rem;
+  --texto-sm: 0.875rem;
+  --texto-md: 0.925rem;
+  --texto-base: 1rem;
+  --texto-lg: 1.15rem;
+  --texto-xl: 1.25rem;
+  --texto-2xl: 1.5rem;
+  --peso-normal: 400;
+  --peso-medio: 600;
+  --peso-negrito: 700;
+  --entrelinha: 1.5;
+  --entrelinha-titulo: 1.25;
+
+  /* Elevação */
+  --sombra: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --sombra-hover: 0 3px 8px rgba(0, 0, 0, 0.14);
+  --sombra-flutuante: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
-/* Tema escuro: só redefine as variáveis. O resto do CSS não muda. */
+/* Tema escuro: redefine apenas variáveis de cor e sombra. */
 :root[data-tema="escuro"] {
   --primaria: #4db6ac;
   --primaria-escura: #80cbc4;
@@ -56,28 +102,57 @@
   --alerta-texto: #ffe08a;
   --alerta-fundo: #3d3213;
   --sombra: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --sombra-hover: 0 3px 10px rgba(0, 0, 0, 0.6);
 }
 
-/* 2. BASE ------------------------------------------------------------------ */
-*, *::before, *::after { box-sizing: border-box; }
+/* 2. BASE E ACESSIBILIDADE -------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-x: hidden;
+}
 
 body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   margin: 0;
+  overflow-x: hidden;
   font-family: var(--fonte);
-  font-size: 1rem;
-  line-height: 1.5;
+  font-size: var(--texto-base);
+  font-weight: var(--peso-normal);
+  line-height: var(--entrelinha);
   color: var(--texto);
   background: var(--fundo);
 }
 
-img { max-width: 100%; height: auto; }
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
 
-h1, h2, h3, p, ul, dl, dd { margin: 0; }
-ul { padding: 0; list-style: none; }
+h1, h2, h3, p, ul, dl, dd {
+  margin: 0;
+}
 
-a { color: var(--primaria); }
+ul {
+  padding: 0;
+  list-style: none;
+}
 
-/* Foco visível para quem navega por teclado (nunca remova o outline sem substituir). */
+a {
+  color: var(--primaria);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+a:hover {
+  color: var(--primaria-escura);
+}
+
+/* Foco visível de alto contraste para navegação por teclado */
 :focus-visible {
   outline: 3px solid var(--foco);
   outline-offset: 2px;
@@ -95,285 +170,729 @@ a { color: var(--primaria); }
 .skip-link {
   position: absolute;
   left: var(--espaco);
-  top: -60px;
-  z-index: 20;
-  padding: 10px 14px;
+  top: -80px;
+  z-index: 40;
+  min-height: var(--alvo-toque);
+  display: inline-flex;
+  align-items: center;
+  padding: var(--espaco-xs) var(--espaco-sm);
   background: var(--primaria);
   color: var(--sobre-primaria);
   border-radius: 0 0 var(--raio) var(--raio);
-  font-weight: 600;
+  font-weight: var(--peso-medio);
+  text-decoration: none;
 }
-.skip-link:focus { top: 0; }
 
-/* 3. TOPO ------------------------------------------------------------------ */
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: 0;
+  color: var(--sobre-primaria);
+}
+
+/* 3. CABEÇALHO / TOPO (Flexbox) --------------------------------------------- */
 .topo {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px var(--espaco);
+  gap: var(--espaco-sm);
+  padding: var(--espaco-sm) var(--espaco);
   background: var(--superficie);
   border-bottom: 1px solid var(--borda);
   box-shadow: var(--sombra);
 }
 
-.topo__marca { display: flex; align-items: center; gap: 12px; }
-.topo__loja { font-size: 0.85rem; color: var(--texto-suave); }
-.topo__titulo { font-size: 1.5rem; line-height: 1.2; color: var(--primaria); }
+.topo__marca {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-sm);
+  min-width: 0;
+}
+
+.topo__loja {
+  display: block;
+  font-size: var(--texto-sm);
+  color: var(--texto-suave);
+}
+
+.topo__titulo {
+  font-size: var(--texto-2xl);
+  line-height: var(--entrelinha-titulo);
+  color: var(--primaria);
+}
 
 .topo__ferramentas {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--espaco-xs);
 }
 
-.relogio { display: flex; align-items: baseline; gap: 6px; margin-right: auto; }
-.relogio__rotulo { font-size: 0.8rem; color: var(--texto-suave); }
-.relogio__hora { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.relogio {
+  display: flex;
+  align-items: baseline;
+  gap: var(--espaco-2xs);
+  margin-right: auto;
+}
 
-.nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.relogio__rotulo {
+  font-size: var(--texto-xs);
+  color: var(--texto-suave);
+}
+
+.relogio__hora {
+  font-size: var(--texto-2xl);
+  font-weight: var(--peso-negrito);
+  font-variant-numeric: tabular-nums;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espaco-xs);
+}
+
 .nav__link {
-  display: inline-block;
-  padding: 10px 14px;               /* alvo de toque confortável */
-  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--alvo-toque);
+  padding: var(--espaco-xs) var(--espaco-sm);
+  border-radius: var(--raio-pilula);
   background: var(--superficie-2);
   color: var(--texto);
   text-decoration: none;
-  font-weight: 600;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
 }
-.nav__link:hover { background: var(--primaria); color: var(--sobre-primaria); }
 
-/* 4. LAYOUT PRINCIPAL ------------------------------------------------------- */
+.nav__link:hover {
+  background: var(--primaria);
+  color: var(--sobre-primaria);
+}
+
+/* 4. LAYOUT PRINCIPAL E CARTÕES (Flexbox) ----------------------------------- */
 .principal {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: var(--espaco);
-  max-width: 1280px;
+  width: 100%;
+  max-width: var(--largura-max);
   margin: 0 auto;
   padding: var(--espaco);
 }
 
-.painel { display: flex; flex-direction: column; gap: var(--espaco); }
-.coluna { display: flex; flex-direction: column; gap: var(--espaco); min-width: 0; }
+.painel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco);
+  width: 100%;
+}
+
+.coluna {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco);
+  min-width: 0;
+  width: 100%;
+}
 
 .cartao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-sm);
   padding: var(--espaco);
   background: var(--superficie);
   border: 1px solid var(--borda);
   border-radius: var(--raio);
   box-shadow: var(--sombra);
+  min-width: 0;
 }
-.cartao__titulo { margin-bottom: 12px; font-size: 1.2rem; color: var(--primaria); }
-.cartao__subtitulo { margin: -6px 0 12px; color: var(--texto-suave); font-size: 0.9rem; }
-.subtitulo { margin: 16px 0 8px; font-size: 1rem; }
 
-/* 5. FORMULÁRIO ------------------------------------------------------------- */
-.form { display: flex; flex-direction: column; gap: 12px; }
-.linha { display: flex; flex-wrap: wrap; gap: 12px; }
-.linha > .campo { flex: 1 1 140px; }
-.campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.campo--grande { flex: 3 1 160px; }
-.campo--pequeno { flex: 1 1 70px; }
-.campo--busca { flex: 2 1 200px; }
+.cartao__titulo {
+  font-size: var(--texto-xl);
+  line-height: var(--entrelinha-titulo);
+  color: var(--primaria);
+}
 
-.campo__rotulo { font-weight: 600; font-size: 0.9rem; }
+.cartao__subtitulo {
+  margin-top: calc(var(--espaco-xs) * -1);
+  color: var(--texto-suave);
+  font-size: var(--texto-sm);
+}
+
+.subtitulo {
+  margin-top: var(--espaco-2xs);
+  font-size: var(--texto-base);
+  font-weight: var(--peso-negrito);
+}
+
+/* 5. FORMULÁRIO (Flexbox) --------------------------------------------------- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-sm);
+}
+
+.linha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-sm);
+}
+
+.linha > .campo {
+  flex: 1 1 auto;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-2xs);
+  min-width: 0;
+}
+
+.campo__rotulo {
+  font-weight: var(--peso-medio);
+  font-size: var(--texto-sm);
+}
 
 .campo__entrada {
   width: 100%;
-  min-height: 44px;                  /* alvo de toque confortável */
-  padding: 8px 10px;
+  max-width: 100%;
+  min-width: 0;
+  min-height: var(--alvo-toque);
+  padding: var(--espaco-xs) var(--espaco-sm);
   font: inherit;
+  font-size: var(--texto-base);
   color: var(--texto);
   background: var(--superficie);
   border: 1px solid var(--borda);
-  border-radius: 8px;
+  border-radius: var(--raio-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.campo__entrada[aria-invalid="true"] { border-color: var(--erro); border-width: 2px; }
 
-.campo__erro { color: var(--erro); font-size: 0.85rem; font-weight: 600; }
-.campo__dica { color: var(--texto-suave); font-size: 0.85rem; margin-top: -6px; }
+.campo__entrada:hover {
+  border-color: var(--primaria);
+}
 
-.campo--check { flex-direction: row; align-items: center; gap: 8px; }
-.campo--check input { width: 22px; height: 22px; accent-color: var(--primaria); }
+.campo__entrada:focus-visible {
+  border-color: var(--foco);
+}
+
+.campo__entrada[aria-invalid="true"] {
+  border-color: var(--erro);
+  border-width: 2px;
+}
+
+.campo__erro {
+  color: var(--erro);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+}
+
+.campo__dica {
+  color: var(--texto-suave);
+  font-size: var(--texto-sm);
+}
+
+.campo--check {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espaco-xs);
+  min-height: var(--alvo-toque);
+  cursor: pointer;
+}
+
+.campo--check input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--primaria);
+  cursor: pointer;
+}
+
+.campo--check label {
+  cursor: pointer;
+  font-weight: var(--peso-medio);
+}
 
 .endereco {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--espaco-sm);
   margin: 0;
-  padding: 12px;
+  padding: var(--espaco-sm);
+  min-width: 0;
   border: 1px dashed var(--primaria);
   border-radius: var(--raio);
   background: var(--superficie-2);
 }
-.endereco__legenda { padding: 0 6px; font-weight: 700; color: var(--primaria); }
+
+.endereco__legenda {
+  padding: 0 var(--espaco-xs);
+  font-weight: var(--peso-negrito);
+  color: var(--primaria);
+}
 
 .aviso {
-  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-xs);
+  padding: var(--espaco-sm);
   border-radius: var(--raio);
   border-left: 4px solid var(--acento);
 }
-.aviso--feriado { background: var(--alerta-fundo); color: var(--alerta-texto); }
-.aviso__texto { margin-bottom: 8px; font-weight: 600; }
+
+.aviso--feriado {
+  background: var(--alerta-fundo);
+  color: var(--alerta-texto);
+}
+
+.aviso__texto {
+  font-weight: var(--peso-medio);
+}
 
 /* Estados (carregando / erro / sucesso / info) */
-.status { padding: 8px 12px; border-radius: 8px; font-size: 0.9rem; }
-.status--carregando, .status--info { background: var(--info-fundo); color: var(--info); }
-.status--erro { background: var(--erro-fundo); color: var(--erro); }
-.status--sucesso { background: var(--sucesso-fundo); color: var(--sucesso); }
-
-/* 6. BOTÕES ------------------------------------------------------------------ */
-.botao {
-  min-height: 44px;
-  padding: 8px 16px;
-  font: inherit;
-  font-weight: 600;
-  border: 2px solid transparent;
-  border-radius: 8px;
-  cursor: pointer;
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espaco-sm);
+  padding: var(--espaco-xs) var(--espaco-sm);
+  border-radius: var(--raio-md);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
 }
-.botao--pequeno { min-height: 40px; padding: 6px 12px; font-size: 0.9rem; }
-.botao--cheio { width: 100%; }
 
-.botao--principal { background: var(--primaria); color: var(--sobre-primaria); }
-.botao--principal:hover { background: var(--primaria-escura); }
-
-.botao--secundario { background: var(--superficie); color: var(--primaria); border-color: var(--primaria); }
-.botao--secundario:hover { background: var(--superficie-2); }
-
-.botao--perigo { background: var(--superficie); color: var(--erro); border-color: var(--erro); }
-.botao--perigo:hover { background: var(--erro-fundo); }
-
-.botao:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.acoes { display: flex; flex-wrap: wrap; gap: 8px; }
-
-/* 7. SERVIÇOS ------------------------------------------------------------------ */
-.servicos { display: flex; flex-direction: column; gap: 8px; }
-.servico { padding: 10px 12px; background: var(--superficie-2); border-radius: 8px; }
-.servico__topo { display: flex; justify-content: space-between; gap: 8px; }
-.servico__preco { font-weight: 700; color: var(--primaria); white-space: nowrap; }
-.servico__descricao { font-size: 0.9rem; }
-.servico__meta { font-size: 0.8rem; color: var(--texto-suave); }
-
-/* 8. AGENDA --------------------------------------------------------------------- */
-.filtros { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
-.filtros > .campo { flex: 1 1 140px; }
-
-.proximo {
-  padding: 8px 12px;
-  margin-bottom: 8px;
+.status--carregando,
+.status--info {
   background: var(--info-fundo);
   color: var(--info);
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.9rem;
 }
-.contador { margin-bottom: 8px; color: var(--texto-suave); font-size: 0.9rem; }
-.vazio { padding: 16px; text-align: center; color: var(--texto-suave); border: 1px dashed var(--borda); border-radius: var(--raio); }
 
-.agenda { display: flex; flex-direction: column; gap: 8px; }
+.status--erro {
+  background: var(--erro-fundo);
+  color: var(--erro);
+}
+
+.status--sucesso {
+  background: var(--sucesso-fundo);
+  color: var(--sucesso);
+}
+
+/* 6. BOTÕES (Alvos de toque >= 44px, :hover e :focus-visible) --------------- */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--alvo-toque);
+  padding: var(--espaco-xs) var(--espaco);
+  font: inherit;
+  font-size: var(--texto-base);
+  font-weight: var(--peso-medio);
+  border: 2px solid transparent;
+  border-radius: var(--raio-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.botao--pequeno {
+  min-height: var(--alvo-toque);
+  padding: var(--espaco-xs) var(--espaco-sm);
+  font-size: var(--texto-sm);
+}
+
+.botao--cheio {
+  width: 100%;
+}
+
+.botao--principal {
+  background: var(--primaria);
+  color: var(--sobre-primaria);
+}
+
+.botao--principal:hover:not(:disabled) {
+  background: var(--primaria-escura);
+  box-shadow: var(--sombra-hover);
+}
+
+.botao--secundario {
+  background: var(--superficie);
+  color: var(--primaria);
+  border-color: var(--primaria);
+}
+
+.botao--secundario:hover:not(:disabled) {
+  background: var(--superficie-2);
+}
+
+.botao--perigo {
+  background: var(--superficie);
+  color: var(--erro);
+  border-color: var(--erro);
+}
+
+.botao--perigo:hover:not(:disabled) {
+  background: var(--erro-fundo);
+}
+
+.botao:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espaco-xs);
+}
+
+.acoes--fechamento {
+  margin-top: var(--espaco-2xs);
+}
+
+/* 7. LISTA DE SERVIÇOS (Flexbox) -------------------------------------------- */
+.servicos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-xs);
+}
+
+.servico {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-2xs);
+  padding: var(--espaco-sm);
+  background: var(--superficie-2);
+  border: 1px solid transparent;
+  border-radius: var(--raio-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.servico:hover {
+  border-color: var(--borda);
+  box-shadow: var(--sombra);
+}
+
+.servico__topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--espaco-xs);
+}
+
+.servico__preco {
+  font-weight: var(--peso-negrito);
+  color: var(--primaria);
+  white-space: nowrap;
+}
+
+.servico__descricao {
+  font-size: var(--texto-sm);
+}
+
+.servico__meta {
+  font-size: var(--texto-xs);
+  color: var(--texto-suave);
+}
+
+/* 8. AGENDA DO DIA E LISTA DE ITENS (Flexbox) ------------------------------- */
+.filtros {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-sm);
+}
+
+.filtros > .campo {
+  flex: 1 1 auto;
+}
+
+.proximo {
+  display: flex;
+  align-items: center;
+  padding: var(--espaco-xs) var(--espaco-sm);
+  background: var(--info-fundo);
+  color: var(--info);
+  border-radius: var(--raio-md);
+  font-weight: var(--peso-medio);
+  font-size: var(--texto-sm);
+}
+
+.contador {
+  color: var(--texto-suave);
+  font-size: var(--texto-sm);
+}
+
+.vazio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--espaco);
+  text-align: center;
+  color: var(--texto-suave);
+  border: 1px dashed var(--borda);
+  border-radius: var(--raio);
+}
+
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-xs);
+}
 
 .item {
-  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-xs);
+  padding: var(--espaco-sm);
   background: var(--superficie);
   border: 1px solid var(--borda);
   border-left: 6px solid var(--primaria);
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
   border-radius: var(--raio);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
-.item:hover { background: var(--superficie-2); }
-.item--concluido { border-left-color: var(--sucesso); }
-.item--cancelado { border-left-color: var(--erro); opacity: 0.8; }
-.item--atrasado { border-left-color: var(--acento); background: var(--alerta-fundo); }
-.item--realce { box-shadow: 0 0 0 2px var(--primaria); }
-.item--expandido { background: var(--superficie-2); }
 
-.item__linha { display: flex; flex-direction: column; gap: 6px; }
+.item:hover {
+  background: var(--superficie-2);
+  box-shadow: var(--sombra-hover);
+}
+
+.item--concluido {
+  border-left-color: var(--sucesso);
+}
+
+.item--cancelado {
+  border-left-color: var(--erro);
+  opacity: 0.85;
+}
+
+.item--atrasado {
+  border-left-color: var(--acento);
+  background: var(--alerta-fundo);
+}
+
+.item--expandido {
+  background: var(--superficie-2);
+}
+
+.item--realce {
+  box-shadow: 0 0 0 2px var(--primaria);
+}
+
+.item__linha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-xs);
+}
 
 .item__toggle {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 12px;
+  gap: var(--espaco-2xs) var(--espaco-sm);
   width: 100%;
-  min-height: 44px;
-  padding: 4px 0;
+  min-height: var(--alvo-toque);
+  padding: var(--espaco-2xs) 0;
   font: inherit;
   text-align: left;
   color: inherit;
   background: none;
   border: 0;
+  border-radius: var(--raio-sm);
   cursor: pointer;
 }
-.item__hora { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--primaria); }
-.item__titulo { font-weight: 700; }
-.item__tutor { flex-basis: 100%; font-size: 0.9rem; color: var(--texto-suave); }
 
-.item__selos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.item__valor { margin-left: auto; font-weight: 700; }
+.item__toggle:hover .item__titulo {
+  color: var(--primaria);
+  text-decoration: underline;
+}
 
-.item__acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.item__hora {
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-negrito);
+  font-variant-numeric: tabular-nums;
+  color: var(--primaria);
+}
+
+.item__titulo {
+  font-weight: var(--peso-negrito);
+}
+
+.item__tutor {
+  flex-basis: 100%;
+  font-size: var(--texto-sm);
+  color: var(--texto-suave);
+}
+
+.item__selos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espaco-xs);
+}
+
+.item__valor {
+  margin-left: auto;
+  font-weight: var(--peso-negrito);
+}
+
+.item__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espaco-xs);
+}
 
 .item__detalhes {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 12px;
-  margin-top: 10px;
-  padding-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espaco-2xs) var(--espaco-sm);
+  padding-top: var(--espaco-xs);
   border-top: 1px solid var(--borda);
-  font-size: 0.9rem;
+  font-size: var(--texto-sm);
 }
-.item__detalhes dt { font-weight: 700; }
+
+.item__detalhes dt {
+  flex: 0 0 110px;
+  font-weight: var(--peso-negrito);
+  color: var(--texto-suave);
+}
+
+.item__detalhes dd {
+  flex: 1 1 calc(100% - 130px);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 
 .selo {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--espaco-sm);
+  border-radius: var(--raio-pilula);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-negrito);
 }
-.selo--agendado { background: var(--info-fundo); color: var(--info); }
-.selo--concluido { background: var(--sucesso-fundo); color: var(--sucesso); }
-.selo--cancelado { background: var(--erro-fundo); color: var(--erro); }
-.selo--atrasado { background: var(--alerta-fundo); color: var(--alerta-texto); border: 1px solid var(--acento); }
 
-/* 9. FECHAMENTO ---------------------------------------------------------------- */
-.resumo { display: flex; flex-wrap: wrap; gap: 8px; }
-.resumo__item { flex: 1 1 calc(50% - 8px); padding: 10px 12px; background: var(--superficie-2); border-radius: 8px; }
-.resumo__rotulo { font-size: 0.8rem; color: var(--texto-suave); }
-.resumo__valor { font-size: 1.25rem; font-weight: 700; }
+.selo--agendado {
+  background: var(--info-fundo);
+  color: var(--info);
+}
 
-.tabela-rolagem { overflow-x: auto; }
-.tabela { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.tabela th, .tabela td { padding: 8px; text-align: left; border-bottom: 1px solid var(--borda); }
-.tabela th { color: var(--texto-suave); font-size: 0.8rem; }
+.selo--concluido {
+  background: var(--sucesso-fundo);
+  color: var(--sucesso);
+}
 
-.exportacao { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
-.exportacao__texto { font-family: Consolas, Menlo, monospace; font-size: 0.8rem; }
+.selo--cancelado {
+  background: var(--erro-fundo);
+  color: var(--erro);
+}
 
-/* 10. ATALHOS, LEMBRETE, TOAST, RODAPÉ ---------------------------------------- */
-.atalhos { display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
+.selo--atrasado {
+  background: var(--alerta-fundo);
+  color: var(--alerta-texto);
+  border: 1px solid var(--acento);
+}
+
+/* 9. FECHAMENTO DO DIA (Flexbox) -------------------------------------------- */
+.resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espaco-xs);
+}
+
+.resumo__item {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--espaco-2xs);
+  flex: 1 1 calc(50% - var(--espaco-xs));
+  min-width: 130px;
+  padding: var(--espaco-sm);
+  background: var(--superficie-2);
+  border-radius: var(--raio-md);
+}
+
+.resumo__rotulo {
+  font-size: var(--texto-xs);
+  color: var(--texto-suave);
+}
+
+.resumo__valor {
+  font-size: var(--texto-xl);
+  font-weight: var(--peso-negrito);
+}
+
+.tabela-rolagem {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--texto-sm);
+}
+
+.tabela th,
+.tabela td {
+  padding: var(--espaco-xs);
+  text-align: left;
+  border-bottom: 1px solid var(--borda);
+}
+
+.tabela th {
+  color: var(--texto-suave);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-negrito);
+}
+
+.tabela tbody tr:hover {
+  background: var(--superficie-2);
+}
+
+.exportacao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-xs);
+  margin-top: var(--espaco-2xs);
+}
+
+.exportacao__texto {
+  font-family: var(--fonte-mono);
+  font-size: var(--texto-xs);
+}
+
+/* 10. ATALHOS, LEMBRETE, TOAST E RODAPÉ (Flexbox) --------------------------- */
+.atalhos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-xs);
+  font-size: var(--texto-sm);
+}
 
 kbd {
   display: inline-block;
   min-width: 1.6em;
   padding: 1px 6px;
   text-align: center;
-  font-family: Consolas, Menlo, monospace;
+  font-family: var(--fonte-mono);
+  font-size: var(--texto-xs);
   background: var(--superficie-2);
   border: 1px solid var(--borda);
   border-bottom-width: 3px;
-  border-radius: 6px;
+  border-radius: var(--raio-sm);
 }
 
 .lembrete {
-  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  padding: var(--espaco-sm) var(--espaco);
   background: var(--alerta-fundo);
   color: var(--alerta-texto);
   border-left: 6px solid var(--acento);
   border-radius: var(--raio);
-  font-weight: 700;
+  font-weight: var(--peso-negrito);
 }
 
 .toast {
@@ -384,56 +903,200 @@ kbd {
   z-index: 30;
   max-width: 460px;
   margin: 0 auto;
-  padding: 12px 16px;
+  padding: var(--espaco-sm) var(--espaco);
   border-radius: var(--raio);
-  font-weight: 600;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-  pointer-events: none;              /* o aviso nunca "rouba" o clique dos botões que ficam por baixo */
+  font-weight: var(--peso-medio);
+  box-shadow: var(--sombra-flutuante);
+  pointer-events: none;
 }
-.toast--sucesso { background: var(--sucesso); color: #ffffff; }
-.toast--info { background: var(--info); color: #ffffff; }
-.toast--erro { background: var(--erro); color: #ffffff; }
+
+.toast--sucesso {
+  background: var(--sucesso);
+  color: #ffffff;
+}
+
+.toast--info {
+  background: var(--info);
+  color: #ffffff;
+}
+
+.toast--erro {
+  background: var(--erro);
+  color: #ffffff;
+}
+
 :root[data-tema="escuro"] .toast--sucesso,
 :root[data-tema="escuro"] .toast--info,
-:root[data-tema="escuro"] .toast--erro { color: #101719; }
-:root[data-tema="escuro"] .toast--sucesso { background: #8bd694; }
-:root[data-tema="escuro"] .toast--info { background: #90c2ff; }
-:root[data-tema="escuro"] .toast--erro { background: #ff9c94; }
-
-.rodape { padding: 20px var(--espaco); text-align: center; font-size: 0.85rem; color: var(--texto-suave); }
-
-/* 11. TABLET (≥ 640px) ---------------------------------------------------------- */
-@media (min-width: 640px) {
-  .topo { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
-  .topo__nav { flex-basis: 100%; }
-  .item__linha { flex-direction: row; align-items: center; justify-content: space-between; }
-  .item__toggle { flex: 1; width: auto; }
-  .item__tutor { flex-basis: auto; }
-  .item__selos { flex-shrink: 0; }
-  .resumo__item { flex-basis: calc(33.333% - 8px); }
+:root[data-tema="escuro"] .toast--erro {
+  color: #101719;
 }
 
-/* 12. DESKTOP (≥ 1024px): duas colunas lado a lado ------------------------------- */
+:root[data-tema="escuro"] .toast--sucesso {
+  background: #8bd694;
+}
+
+:root[data-tema="escuro"] .toast--info {
+  background: #90c2ff;
+}
+
+:root[data-tema="escuro"] .toast--erro {
+  background: #ff9c94;
+}
+
+.rodape {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espaco-2xs);
+  padding: var(--espaco-lg) var(--espaco);
+  text-align: center;
+  font-size: var(--texto-sm);
+  color: var(--texto-suave);
+  border-top: 1px solid var(--borda);
+  background: var(--superficie);
+}
+
+/* 11. BREAKPOINT 1 — TABLET (>= 768px) -------------------------------------- */
+@media (min-width: 768px) {
+  .topo {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .topo__nav {
+    flex-basis: 100%;
+  }
+
+  .linha {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .linha > .campo {
+    flex: 1 1 150px;
+  }
+
+  .linha > .campo--grande {
+    flex: 2 1 220px;
+  }
+
+  .linha > .campo--pequeno {
+    flex: 1 1 90px;
+  }
+
+  .filtros {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .filtros > .campo {
+    flex: 1 1 150px;
+  }
+
+  .filtros > .campo--busca {
+    flex: 2 1 220px;
+  }
+
+  .item__linha {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .item__toggle {
+    flex: 1;
+    width: auto;
+  }
+
+  .item__tutor {
+    flex-basis: auto;
+  }
+
+  .item__selos {
+    flex-shrink: 0;
+  }
+
+  .resumo__item {
+    flex: 1 1 calc(33.333% - var(--espaco-xs));
+  }
+}
+
+/* 12. BREAKPOINT 2 — DESKTOP (>= 1024px e >= 1280px) ------------------------ */
 @media (min-width: 1024px) {
-  .painel { flex-direction: row; align-items: flex-start; }
-  .coluna--form { flex: 1 1 380px; }
-  .coluna--agenda { flex: 2 1 560px; }
-  .topo__nav { flex-basis: auto; }
-  .topo { flex-wrap: nowrap; }
+  .topo {
+    flex-wrap: nowrap;
+  }
+
+  .topo__nav {
+    flex-basis: auto;
+  }
+
+  .painel {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .coluna--form {
+    flex: 1 1 400px;
+  }
+
+  .coluna--agenda {
+    flex: 1.5 1 560px;
+  }
 }
 
-/* Preferência do sistema: reduz animações (não usamos muitas, mas fica o padrão). */
+@media (min-width: 1280px) {
+  :root {
+    --espaco: 20px;
+  }
+
+  .coluna--form {
+    flex: 1 1 440px;
+  }
+
+  .coluna--agenda {
+    flex: 1.7 1 680px;
+  }
+}
+
+/* Preferência do sistema para redução de movimento */
 @media (prefers-reduced-motion: reduce) {
-  * { scroll-behavior: auto; }
+  *, *::before, *::after {
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
+  }
 }
 
-/* Impressão: só a agenda e o fechamento, sem controles (bônus). */
+/* Folha de impressão (Bônus): imprime apenas a agenda e o fechamento */
 @media print {
-  .topo, .skip-link, .coluna--form, .cartao--atalhos, .filtros, .item__acoes, .acoes, .exportacao, .toast, .rodape { display: none; }
-  .cartao { box-shadow: none; border-color: #999999; }
-  .principal { padding: 0; }
+  .topo,
+  .skip-link,
+  .coluna--form,
+  .cartao--atalhos,
+  .filtros,
+  .item__acoes,
+  .acoes,
+  .exportacao,
+  .toast,
+  .rodape {
+    display: none;
+  }
+
+  .cartao {
+    box-shadow: none;
+    border-color: #999999;
+  }
+
+  .principal {
+    padding: 0;
+  }
 }
 
-/* Atributo hidden SEMPRE por último: precisa vencer os `display` definidos nas classes acima
-   (mesma especificidade; vale a ordem no arquivo). */
-[hidden] { display: none; }
+/* Atributo hidden SEMPRE por último: vence qualquer display: flex das classes acima
+   pela ordem da cascata, mantendo a mesma especificidade baixa (0,1,0) sem !important. */
+[hidden] {
+  display: none;
+}
