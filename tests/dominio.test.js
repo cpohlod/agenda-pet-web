@@ -556,3 +556,150 @@ test('US11 (CommonJS): validar-agenda.cjs aprova agenda-exemplo.json e reprova a
   assert.ok(errosInvalida.some((msg) => msg.includes('Horário inválido')));
   assert.ok(errosInvalida.some((msg) => msg.includes('não existe no catálogo')));
 });
+
+
+test('CEP: cobertura estendida de cepValido e formatarCep (nulos, espaços e tamanhos)', () => {
+  // Casos válidos
+  assert.equal(cepValido('01310200'), true);
+  assert.equal(cepValido('01310-200'), true);
+  assert.equal(cepValido(' 01310-200 '), true);
+
+  // Casos inválidos (vazio, nulo, undefined, curto, longo, apenas letras)
+  assert.equal(cepValido(''), false);
+  assert.equal(cepValido('   '), false);
+  assert.equal(cepValido(null), false);
+  assert.equal(cepValido(undefined), false);
+  assert.equal(cepValido('01310-20'), false);
+  assert.equal(cepValido('01310-2000'), false);
+  assert.equal(cepValido('abcdefgh'), false);
+
+  // Formatação de CEP
+  assert.equal(formatarCep('01310200'), '01310-200');
+  assert.equal(formatarCep('01310-200'), '01310-200');
+  assert.equal(formatarCep('12345'), '12345');
+  assert.equal(formatarCep(''), '');
+  assert.equal(formatarCep(null), '');
+});
+
+test('CEP: validarAgendamento exige CEP válido apenas quando o atendimento for domiciliar', () => {
+  const base = {
+    tutor: 'Mariana Souza',
+    telefone: '(11) 98877-6655',
+    pet: 'Thor',
+    especie: 'Cão',
+    servicoId: 'banho',
+    data: '2026-11-10',
+    hora: '10:00',
+  };
+  const referencia = new Date('2026-10-20T09:00:00');
+
+  // Na loja: não exige CEP nem endereço
+  const errosLoja = validarAgendamento(
+    { ...base, domiciliar: false, endereco: null },
+    servicoBanho,
+    { agora: referencia }
+  );
+  assert.equal(errosLoja.cep, undefined);
+
+  // Domiciliar com CEP curto: deve acusar erro no campo cep
+  const errosCepCurto = validarAgendamento(
+    {
+      ...base,
+      domiciliar: true,
+      endereco: {
+        cep: '01310-20',
+        logradouro: 'Av Paulista',
+        numero: '1000',
+        bairro: 'Bela Vista',
+        cidade: 'São Paulo',
+        uf: 'SP',
+      },
+    },
+    servicoBanho,
+    { agora: referencia }
+  );
+  assert.ok(errosCepCurto.cep);
+
+  // Domiciliar com CEP válido de 8 dígitos: não deve acusar erro em cep
+  const errosCepOk = validarAgendamento(
+    {
+      ...base,
+      domiciliar: true,
+      endereco: {
+        cep: '01310-200',
+        logradouro: 'Av Paulista',
+        numero: '1000',
+        bairro: 'Bela Vista',
+        cidade: 'São Paulo',
+        uf: 'SP',
+      },
+    },
+    servicoBanho,
+    { agora: referencia }
+  );
+  assert.equal(errosCepOk.cep, undefined);
+});
+
+test('CEP (api.buscarCep): trata formato inválido, CEP inexistente, falha de rede e sucesso', async () => {
+  const { buscarCep, ErroApi } = await import('../js/api.js');
+  const fetchOriginal = globalThis.fetch;
+
+  try {
+    // 1. Formato inválido (menos de 8 dígitos) -> erro 'formato' sem chamar fetch
+    await assert.rejects(
+      () => buscarCep('12345'),
+      (erro) => erro instanceof ErroApi && erro.tipo === 'formato'
+    );
+
+    // 2. ViaCEP retorna { erro: true } -> erro 'nao-encontrado'
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ erro: true }),
+    });
+    await assert.rejects(
+      () => buscarCep('88000-000'),
+      (erro) => erro instanceof ErroApi && erro.tipo === 'nao-encontrado'
+    );
+
+    // 3. Queda de rede -> erro 'rede'
+    globalThis.fetch = async () => {
+      throw new Error('Network error');
+    };
+    await assert.rejects(
+      () => buscarCep('01310-200'),
+      (erro) => erro instanceof ErroApi && erro.tipo === 'rede'
+    );
+
+    // 4. Sucesso -> retorna endereço normalizado
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        cep: '01310-200',
+        logradouro: 'Avenida Paulista',
+        complemento: 'de 1047 a 1865',
+        bairro: 'Bela Vista',
+        localidade: 'São Paulo',
+        uf: 'SP',
+      }),
+    });
+    const endereco = await buscarCep('01310200');
+    assert.equal(endereco.cep, '01310-200');
+    assert.equal(endereco.logradouro, 'Avenida Paulista');
+    assert.equal(endereco.bairro, 'Bela Vista');
+    assert.equal(endereco.cidade, 'São Paulo');
+    assert.equal(endereco.uf, 'SP');
+  } finally {
+    globalThis.fetch = fetchOriginal;
+  }
+});
+
+test('CEP (BUG validação): cepValido deve rejeitar CEPs com letras misturadas ou todos os dígitos repetidos (00000-000)', () => {
+  // Não deve aceitar letras misturadas junto a 8 números
+  assert.equal(cepValido('01310-200abc'), false);
+  assert.equal(cepValido('01a310-200'), false);
+
+  // Não deve aceitar o placeholder '00000-000' ou todos os dígitos iguais
+  assert.equal(cepValido('00000-000'), false);
+  assert.equal(cepValido('00000000'), false);
+  assert.equal(cepValido('11111-111'), false);
+});

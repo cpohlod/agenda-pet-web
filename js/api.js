@@ -2,7 +2,7 @@
    api.js — TODO O fetch MORA AQUI   (tickets: US02, US04, US05)
    ========================================================================== */
 
-import { somenteDigitos, formatarCep } from './dominio/regras.js';
+import { somenteDigitos, formatarCep,  cepValido} from './dominio/regras.js';
 import * as storage from './storage.js';
 
 /**
@@ -71,10 +71,10 @@ export async function carregarAgendaExemplo() {
  * @returns {Promise<{cep: string, logradouro: string, complemento: string, bairro: string, cidade: string, uf: string}>}
  */
 export async function buscarCep(cep) {
-  const digitos = somenteDigitos(cep);
-  if (digitos.length !== 8) {
+  if (!cepValido(cep)) {
     throw new ErroApi('formato', 'Formato de CEP inválido: informe 8 dígitos numéricos.');
   }
+  const digitos = somenteDigitos(cep);
 
   const url = `https://viacep.com.br/ws/${digitos}/json/`;
   let dados;

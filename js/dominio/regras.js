@@ -160,7 +160,21 @@ export function telefoneValido(tel) {
  * @returns {boolean}
  */
 export function cepValido(cep) {
-  return somenteDigitos(cep).length === 8;
+  if (cep === null || cep === undefined) {
+    return false;
+  }
+  const str = String(cep).trim();
+  const formatoValido = /^\d{5}-?\d{3}$|^\d{2}\.\d{3}-\d{3}$/.test(str);
+  if (!formatoValido) {
+    return false;
+  }
+  const digitos = str.replace(/\D/g, '');
+  
+  if (/^(\d)\1{7}$/.test(digitos)) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
