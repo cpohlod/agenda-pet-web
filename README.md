@@ -68,6 +68,25 @@ Painel web responsivo e acessível para a gestão de agendamentos diários do pe
   - **Controle de versão de dependências:** `package-lock.json` versionado no Git para reprodutibilidade exata e pasta `node_modules/` ignorada no `.gitignore`.
   - **Script de Fechamento em ESM (`scripts/fechamento-dia.js`):** Importa os mesmos módulos de domínio (`js/dominio/agendamento.js`, `js/dominio/regras.js` e `js/dominio/fechamento.js`) usados pelo navegador, lê `data/servicos.json` e `data/agenda-exemplo.json` (ou `--arquivo=...` e `--data=...`) e imprime o relatório completo do caixa no terminal.
   - **Script de Validação em CommonJS (`scripts/validar-agenda.cjs`):** Usa `require('node:fs')`, `require('node:path')`, `__dirname` e `import()` dinâmico para validar a integridade de arquivos JSON de agenda (campos obrigatórios, protocolos únicos, status, data, horário comercial, regras domiciliares e conflitos de horário), encerrando com `process.exit(1)` quando encontra inconsistências.
+- **US12 — Depuração no VS Code e Relatório de Bug:**
+  - **Configuração do depurador (`.vscode/launch.json`):** Perfis prontos para depurar `scripts/fechamento-dia.js` (ESM), `scripts/validar-agenda.cjs` (CommonJS), `tests/dominio.test.js` (Node Test Runner) e a interface web no navegador (Edge / Chrome).
+  - **Investigação com Breakpoints, Watch e Call Stack:** Uso de breakpoints simples, breakpoint condicional (`a.status === 'Cancelado'`) e logpoint em `js/dominio/fechamento.js` para isolar e corrigir a causa raiz na apuração de faturamento.
+  - **Relatório de Bug documentado (`docs/bug-report.md` e `docs/depuracao.png`):** Registro completo com passos de reprodução, tabela esperado × obtido, inspeção de variáveis/Watch, Call Stack, código antes/depois e prevenção via testes automatizados.
+
+---
+
+## Depuração no VS Code e Relatório de Bug (US12)
+
+O arquivo `.vscode/launch.json` disponibiliza 5 configurações de depuração acionáveis com **F5**:
+1. **Depurar fechamento do dia (Node):** Executa `scripts/fechamento-dia.js --data=2026-10-20`.
+2. **Depurar validar-agenda (CommonJS):** Executa `scripts/validar-agenda.cjs data/agenda-invalida.json`.
+3. **Depurar testes do domínio (Node):** Executa `tests/dominio.test.js`.
+4. **Depurar a página (Edge / Chrome):** Abre `http://localhost:5500` conectado ao depurador do VS Code.
+
+- **Relatório completo do defeito investigado:** Consulte [docs/bug-report.md](docs/bug-report.md).
+- **Evidência da sessão de depuração:**
+
+![Depuração no VS Code](docs/depuracao.png)
 
 ---
 
@@ -214,6 +233,50 @@ No JavaScript moderno (ECMAScript 2015 / ES6 em diante), a forma como declaramos
 
 ---
 
+## Estrutura de Pastas do Projeto
+
+```text
+agenda-pet-web/
+├── .github/
+│   └── pull_request_template.md  # Modelo padrão para descrição de Pull Requests
+├── .vscode/
+│   └── launch.json               # Configurações de depuração (Node ESM, CommonJS, Testes e Browser)
+├── css/
+│   └── style.css                 # Folha de estilos mobile-first com Flexbox e Custom Properties
+├── data/
+│   ├── agenda-exemplo.json       # Massa de agendamentos de exemplo para testes e demonstração
+│   ├── agenda-invalida.json      # Massa de agendamentos com erros propositais para o validador
+│   └── servicos.json             # Catálogo de serviços, preços, durações e elegibilidade domiciliar
+├── docs/
+│   ├── bug-report.md             # Relatório detalhado de investigação e correção de bug (US12)
+│   └── depuracao.png             # Evidência visual do depurador do VS Code pausado no breakpoint
+├── img/
+│   ├── favicon.svg               # Ícone da aba do navegador
+│   └── logo.svg                  # Logotipo vetorial da Patinhas & Cia
+├── js/
+│   ├── dominio/                  # Núcleo puro de regras de negócio (compartilhado Web + Node.js)
+│   │   ├── agendamento.js        # Classes Servico, Agendamento, AgendamentoDomiciliar e closure de protocolo
+│   │   ├── fechamento.js         # Filtros com callbacks, ordenação e cálculo de fechamento diário
+│   │   └── regras.js             # Validações de data, horário comercial, telefone, CEP e conflitos
+│   ├── api.js                    # Integrações assíncronas com fetch (servicos.json, ViaCEP e BrasilAPI)
+│   ├── app.js                    # Ponto de entrada da interface web, eventos de DOM e timers
+│   ├── storage.js                # Persistência isolada em localStorage com tratamento try/catch
+│   └── ui.js                     # Renderização segura do DOM (createElement / textContent)
+├── planejamento/
+│   └── sprint-planning.md        # Planejamento da Sprint, estimativas e análise de riscos
+├── scripts/
+│   ├── fechamento-dia.js         # Script CLI em ESM para relatório de fechamento no terminal
+│   └── validar-agenda.cjs        # Script CLI em CommonJS para validação estrutural de arquivos JSON
+├── tests/
+│   ├── dominio.test.js           # Testes automatizados do domínio e dos scripts CLI (node:test)
+│   └── storage.test.js           # Testes automatizados de persistência e cache em localStorage
+├── index.html                    # Página única com estrutura HTML5 semântica e acessível
+├── package.json                  # Manifesto npm, scripts e devDependencies
+└── README.md                     # Documentação geral do projeto
+```
+
+---
+
 ## Como Rodar
 
 1. **Instale as dependências locais:**
@@ -247,6 +310,9 @@ No JavaScript moderno (ECMAScript 2015 / ES6 em diante), a forma como declaramos
    ```bash
    npm test
    ```
+
+6. **Depure no VS Code (US12):**
+   Abra o painel **Run and Debug (`Ctrl+Shift+D`)**, escolha **"Depurar fechamento do dia (Node)"** ou **"Depurar validar-agenda (CommonJS)"** e pressione **F5**.
 
 ## Tecnologias
 

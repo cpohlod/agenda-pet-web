@@ -1,0 +1,45 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Depurar fechamento do dia (Node)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/fechamento-dia.js",
+      "args": ["--data=2026-10-20"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Depurar validar-agenda (CommonJS)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/validar-agenda.cjs",
+      "args": ["data/agenda-invalida.json"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Depurar testes do domínio (Node)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/dominio.test.js",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Depurar a página (Edge)",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:5500",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      "name": "Depurar a página (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5500",
+      "webRoot": "${workspaceFolder}"
+    }
+  ]
+}
