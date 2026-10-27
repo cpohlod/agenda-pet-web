@@ -63,6 +63,67 @@ Painel web responsivo e acessível para a gestão de agendamentos diários do pe
   - **Design Tokens via Custom Properties (`:root`):** Variáveis CSS padronizadas para **cores** (identidade visual *Patinhas & Cia* em verde-petróleo `#00695c` e âmbar `#ffb300`, além do tema escuro completo `[data-tema="escuro"]`), **espaçamentos** (`--espaco-2xs` a `--espaco-xl`, raios de borda e `--alvo-toque: 44px`) e **tipografia** (famílias `--fonte` e `--fonte-mono`, escala modular `--texto-xs` a `--texto-2xl`, pesos e entrelinhas).
   - **Especificidade sob controle:** Zero ocorrências de `!important`, zero seletores por `#id` na folha de estilos e ausência de atributos `style` inline no HTML, mantendo seletores planos de baixa especificidade (padrão BEM).
   - **Acessibilidade visual e ergonômica:** Estados `:hover` e `:focus-visible` (`outline: 3px solid var(--foco)`) de alta visibilidade, alvos de toque confortáveis (mínimo de `44px` de altura) e relação de contraste de texto superior a **4,5:1** (WCAG AA) em todos os componentes.
+- **US11 — Projeto Node.js, Relatório de Fechamento e Validação de Dados (ESM e CommonJS):**
+  - **Manifesto `package.json`:** Configurado com `name`, `version`, `description`, `"type": "module"`, scripts `start`, `fechamento`, `validar`, `validar:erro` e `test`, e dependência local `http-server` em `devDependencies`.
+  - **Controle de versão de dependências:** `package-lock.json` versionado no Git para reprodutibilidade exata e pasta `node_modules/` ignorada no `.gitignore`.
+  - **Script de Fechamento em ESM (`scripts/fechamento-dia.js`):** Importa os mesmos módulos de domínio (`js/dominio/agendamento.js`, `js/dominio/regras.js` e `js/dominio/fechamento.js`) usados pelo navegador, lê `data/servicos.json` e `data/agenda-exemplo.json` (ou `--arquivo=...` e `--data=...`) e imprime o relatório completo do caixa no terminal.
+  - **Script de Validação em CommonJS (`scripts/validar-agenda.cjs`):** Usa `require('node:fs')`, `require('node:path')`, `__dirname` e `import()` dinâmico para validar a integridade de arquivos JSON de agenda (campos obrigatórios, protocolos únicos, status, data, horário comercial, regras domiciliares e conflitos de horário), encerrando com `process.exit(1)` quando encontra inconsistências.
+
+---
+
+## Projeto Node.js, Gerenciamento de Pacotes (npm) e Módulos (US11)
+
+### 1. Instalação Global vs. Instalação Local no npm
+
+No ecossistema Node.js, pacotes podem ser instalados em dois escopos distintos:
+
+#### A) Instalação Local (`npm install` / `npm install --save-dev`)
+- **Quando usar:** Sempre que o pacote for uma dependência do projeto (bibliotecas de código, servidores de desenvolvimento como `http-server` ou `live-server`, executores de teste, linters).
+- **Por que usar:** Garante que a dependência fique registrada no `package.json` e travada no `package-lock.json`. Qualquer pessoa que clonar o repositório e executar `npm install` terá exatamente a mesma versão instalada dentro de `./node_modules`, sem conflitos entre projetos diferentes na mesma máquina.
+- **O que instalamos localmente neste projeto:** Instalamos o pacote **`http-server` (`^14.1.1`) localmente** como dependência de desenvolvimento (`devDependencies` no `package.json`), utilizado pelo script `"start": "http-server . -p 5500 -c-1 -o"`.
+
+#### B) Instalação Global (`npm install -g`)
+- **Quando usar:** Apenas para ferramentas de linha de comando (CLI) de uso geral do sistema operacional que não pertencem a um repositório específico (como o próprio `npm`, gerenciadores de versão ou geradores de projetos globais).
+- **Por que evitar para dependências de projeto:** Pacotes globais não ficam registrados no `package.json`. Se um projeto dependesse de um pacote global, outro desenvolvedor ao clonar o repositório receberia erro de *"comando não encontrado"*.
+- **O que instalamos globalmente neste projeto:** **Nada** foi exigido globalmente para rodar o AgendaPet Web; toda a infraestrutura do projeto é autocontida localmente.
+
+#### C) Comandos Essenciais de Gerenciamento e Inspeção (`npm` e `npx`)
+
+```bash
+# Instalar uma dependência de desenvolvimento localmente no projeto (grava em devDependencies)
+npm install --save-dev http-server
+
+# Instalar um utilitário globalmente no sistema operacional
+npm install -g http-server
+
+# Listar a árvore de pacotes instalados LOCALMENTE no projeto atual
+npm ls
+
+# Listar apenas os pacotes de 1º nível instalados GLOBALMENTE na máquina
+npm ls -g --depth=0
+
+# Executar o binário instalado localmente em ./node_modules/.bin sem instalar globalmente
+npx http-server . -p 5500 -c-1
+```
+
+---
+
+### 2. Comparação entre CommonJS (CJS) e ECMAScript Modules (ESM)
+
+| Critério | CommonJS (CJS) | ECMAScript Modules (ESM) |
+| :--- | :--- | :--- |
+| **Sintaxe de importação / exportação** | `const x = require('...')` / `module.exports = ...` | `import { x } from '...'` / `export ...` |
+| **Extensão de arquivo** | `.cjs` (ou `.js` quando `"type": "commonjs"` / omitido) | `.mjs` (ou `.js` quando `"type": "module"`) |
+| **Campo `"type"` no `package.json`** | `"commonjs"` (valor padrão se omitido no `package.json`) | `"module"` |
+| **Modo de carregamento** | **Síncrono** e resolvido dinamicamente em tempo de execução | **Assíncrono** e analisado estaticamente antes da execução |
+| **Variáveis de diretório** | Possui `__dirname` e `__filename` nativamente | Usa `import.meta.url` (convertido com `fileURLToPath`) |
+| **Uso direto no navegador** | **Não suportado nativamente** (exige *bundlers* como Webpack) | **Nativo** nos navegadores modernos via `<script type="module">` |
+
+#### Justificativa da Escolha Arquitetural no Projeto
+1. **Por que adotamos ESM (`"type": "module"`) como padrão do projeto?**
+   O requisito central da arquitetura do AgendaPet Web é compartilhar **exatamente os mesmos módulos de regras de negócio (`js/dominio/`)** entre o navegador (`index.html` carregando `<script type="module" src="js/app.js">`) e o terminal Node.js (`scripts/fechamento-dia.js` e `tests/`), **sem uso de bundlers ou transpiladores**. Como o navegador suporta nativamente apenas a sintaxe `import`/`export` (ESM), configurar `"type": "module"` no `package.json` permite que o Node.js execute os mesmos arquivos `.js` diretamente.
+2. **Por que usamos `.cjs` em `scripts/validar-agenda.cjs`?**
+   Para demonstrar na prática a coexistência e interoperabilidade entre os dois padrões no Node.js. A extensão `.cjs` instrui o Node.js a tratar aquele script específico como **CommonJS** (permitindo usar `require('node:fs')`, `require('node:path')` e `__dirname`), enquanto o carregamento assíncrono `await import('../js/dominio/regras.js')` faz a ponte para reaproveitar os módulos ESM do domínio sem duplicação de código.
 
 ---
 
@@ -155,18 +216,34 @@ No JavaScript moderno (ECMAScript 2015 / ES6 em diante), a forma como declaramos
 
 ## Como Rodar
 
-1. **Instale as dependências:**
+1. **Instale as dependências locais:**
    ```bash
    npm install
    ```
 
-2. **Inicie o servidor de desenvolvimento:**
+2. **Inicie o servidor local de desenvolvimento:**
    ```bash
    npm start
    ```
    Acesse a aplicação no navegador em `http://localhost:5500`.
 
-3. **Execute os testes automatizados do domínio:**
+3. **Gere o relatório de fechamento do dia no terminal (ESM):**
+   ```bash
+   npm run fechamento
+   # Ou informando data e arquivo customizados:
+   node scripts/fechamento-dia.js --data=2026-10-20 --arquivo=data/agenda-exemplo.json
+   ```
+
+4. **Valide um arquivo de agenda no terminal (CommonJS):**
+   ```bash
+   # Valida data/agenda-exemplo.json (esperado: [OK], código de saída 0)
+   npm run validar
+
+   # Valida data/agenda-invalida.json (esperado: [ERRO] com lista de problemas, código de saída 1)
+   npm run validar:erro
+   ```
+
+5. **Execute a suíte de testes automatizados:**
    ```bash
    npm test
    ```
@@ -175,5 +252,5 @@ No JavaScript moderno (ECMAScript 2015 / ES6 em diante), a forma como declaramos
 
 - **HTML5** semântico e acessível (WAI-ARIA).
 - **CSS3** estruturado com variáveis CSS (Custom Properties) e layout Flexbox.
-- **JavaScript (ES2022+):** Módulos nativos (ESM), sem frameworks ou bibliotecas externas no front-end.
-- **Node.js (>=20):** Executor nativo de testes (`node:test`).
+- **JavaScript (ES2022+):** Módulos nativos (ESM no navegador e Node.js + interoperabilidade CommonJS `.cjs`).
+- **Node.js (>=20):** Scripts de CLI (`fs`, `path`, `url`) e executor nativo de testes (`node:test`).

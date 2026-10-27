@@ -11,56 +11,104 @@
    Este script IMPORTA os mesmos módulos que a página usa (js/dominio/).
    Por isso os números do terminal e os da tela são idênticos — e é por isso
    que o domínio não pode usar document, window ou localStorage.
-
-   O QUE FAZER AQUI
-   1) Imports no estilo ESM (funciona porque o package.json tem "type": "module"):
-        import { readFile } from 'node:fs/promises';
-        import path from 'node:path';
-        import { fileURLToPath } from 'node:url';
-        import { Servico, criarAgendamento } from '../js/dominio/agendamento.js';
-        ...
-      ATENÇÃO: em import relativo, a extensão ".js" é OBRIGATÓRIA no Node.
-   2) Descobrir a raiz do projeto. No ESM NÃO existem __dirname e __filename:
-      calcule a partir de import.meta.url.
-   3) Função para ler argumentos no formato --nome=valor, usando process.argv.
-   4) Função main() assíncrona:
-        - ler e validar a data (mostrar mensagem de erro clara se inválida);
-        - ler data/servicos.json e data/<arquivo>.json (readFile + JSON.parse);
-        - transformar em objetos (map + new Servico / criarAgendamento);
-        - calcular o fechamento e imprimir com console.log;
-        - se não houver agendamento naquela data, avisar quais datas existem.
-   5) Tratamento de erro: main().catch(...) imprimindo console.error e
-      process.exitCode = 1 (código diferente de 0 = "deu erro", útil em automações).
-
-   EXEMPLOS GENÉRICOS (assunto: relatório de estoque):
-
-   // ---- Raiz do projeto no ESM -------------------------------------------
-   // const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-
-   // ---- Ler um JSON -------------------------------------------------------
-   // const lerJSON = async (relativo) => JSON.parse(await readFile(path.join(raiz, relativo), 'utf8'));
-
-   // ---- Ler argumentos --nome=valor ---------------------------------------
-   // function lerArgumento(nome, padrao) {
-   //   const arg = process.argv.find((a) => a.startsWith(`--${nome}=`));
-   //   return arg ? arg.slice(nome.length + 3) : padrao;      // "--mes=10" -> "10"
-   // }
-
-   // ---- Estrutura geral ------------------------------------------------------
-   // async function main() {
-   //   const mes = lerArgumento('mes', '10');
-   //   const produtos = (await lerJSON('data/produtos.json')).map((p) => new Produto(p));
-   //   const resumo = calcularEstoque(produtos, mes);             // vem do domínio
-   //   console.log(montarLinhas(resumo).join('\n'));
-   // }
-   // main().catch((erro) => {
-   //   console.error(`Não foi possível gerar o relatório: ${erro.message}`);
-   //   process.exitCode = 1;
-   // });
-
-   COMO TESTAR
-   - npm run fechamento
-   - Passe uma data sem agendamentos e uma data inválida: as mensagens
-     precisam ser claras.
-   - Depure com F5 (configuração "Depurar fechamento do dia" em .vscode/launch.json).
    ========================================================================== */
+
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { Servico, criarAgendamento } from '../js/dominio/agendamento.js';
+import { dataValida, formatarDataBR, formatarMoeda } from '../js/dominio/regras.js';
+import {
+  agendamentosDoDia,
+  calcularFechamento,
+  montarLinhasRelatorio,
+} from '../js/dominio/fechamento.js';
+
+// No ESM não existem __dirname e __filename globais: calculamos a partir de import.meta.url
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const raiz = path.resolve(__dirname, '..');
+
+/**
+ * Lê um argumento da linha de comando no formato --nome=valor.
+ * @param {string} nome
+ * @param {string} padrao
+ * @returns {string}
+ */
+export function lerArgumento(nome, padrao = '') {
+  const prefixo = `--${nome}=`;
+  const arg = process.argv.slice(2).find((a) => a.startsWith(prefixo));
+  return arg ? arg.slice(prefixo.length).trim() : padrao;
+}
+
+/**
+ * Lê e interpreta um arquivo JSON a partir da raiz do projeto.
+ * @param {string} caminhoRelativo
+ * @returns {Promise<any>}
+ */
+export async function lerJSONArquivo(caminhoRelativo) {
+  const caminhoAbsoluto = path.resolve(raiz, caminhoRelativo);
+  const conteudo = await readFile(caminhoAbsoluto, 'utf8');
+  return JSON.parse(conteudo);
+}
+
+/**
+ * Executa a geração e impressão do relatório de fechamento do dia no terminal.
+ */
+export async function main() {
+  const data = lerArgumento('data', '2026-10-20');
+  const arquivo = lerArgumento('arquivo', 'data/agenda-exemplo.json');
+
+  if (!dataValida(data)) {
+    throw new Error(
+      `Data inválida "${data}". Informe uma data real no formato AAAA-MM-DD (ex.: --data=2026-10-20).`
+    );
+  }
+
+  const dadosServicos = await lerJSONArquivo('data/servicos.json');
+  if (!Array.isArray(dadosServicos)) {
+    throw new Error('O catálogo data/servicos.json não contém uma lista válida.');
+  }
+  const catalogo = dadosServicos.map((s) => new Servico(s));
+
+  const dadosAgenda = await lerJSONArquivo(arquivo);
+  if (!Array.isArray(dadosAgenda)) {
+    throw new Error(`O arquivo "${arquivo}" não contém uma lista JSON de agendamentos.`);
+  }
+
+  const agendamentos = dadosAgenda.map((item) => criarAgendamento(item, catalogo));
+  const doDia = agendamentosDoDia(agendamentos, data);
+  const fechamento = calcularFechamento(agendamentos, data);
+
+  const linhas = montarLinhasRelatorio(fechamento);
+  console.log(linhas.join('\n'));
+
+  if (doDia.length === 0) {
+    const datasDisponiveis = [...new Set(agendamentos.map((a) => a.data))].sort();
+    if (datasDisponiveis.length > 0) {
+      console.log(
+        `\n[AVISO] Nenhum agendamento encontrado em ${formatarDataBR(data)} (${data}). Datas disponíveis em ${arquivo}: ${datasDisponiveis.join(', ')}`
+      );
+    } else {
+      console.log(`\n[AVISO] O arquivo ${arquivo} não possui agendamentos registrados.`);
+    }
+    return;
+  }
+
+  console.log('\nDETALHAMENTO DOS ATENDIMENTOS DO DIA:');
+  for (const ag of doDia) {
+    console.log(`  - [${ag.status}] ${ag.resumo()} — ${formatarMoeda(ag.calcularValor())}`);
+  }
+}
+
+// Executa apenas quando chamado diretamente pelo Node.js
+const executadoDiretamente =
+  process.argv[1] && path.resolve(process.argv[1]) === __filename;
+
+if (executadoDiretamente) {
+  main().catch((erro) => {
+    console.error(`[ERRO] Não foi possível gerar o relatório: ${erro.message}`);
+    process.exitCode = 1;
+  });
+}

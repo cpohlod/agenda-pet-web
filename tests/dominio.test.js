@@ -519,3 +519,40 @@ test('timers: buscarLembreteProximo dispara apenas quando faltam 15 min ou menos
   // O próximo pendente é 11:00 (faltam 72 min), logo resultado deve ser null
   assert.equal(resultadoAposConclusao, null);
 });
+
+
+test('US11 (ESM): fechamento-dia lê data/agenda-exemplo.json e calcula os totais de 2026-10-20', async () => {
+  const { lerJSONArquivo } = await import('../scripts/fechamento-dia.js');
+  const dadosServicos = await lerJSONArquivo('data/servicos.json');
+  const dadosAgenda = await lerJSONArquivo('data/agenda-exemplo.json');
+
+  const catalogo = dadosServicos.map((s) => new Servico(s));
+  const agendamentos = dadosAgenda.map((item) => criarAgendamento(item, catalogo));
+  const fechamento = calcularFechamento(agendamentos, '2026-10-20');
+
+  assert.equal(fechamento.total, 10);
+  assert.equal(fechamento.concluidos, 5);
+  assert.equal(fechamento.agendados, 4);
+  assert.equal(fechamento.cancelados, 1);
+  assert.equal(fechamento.faturamento, 515);
+  assert.equal(fechamento.aReceber, 385);
+});
+
+test('US11 (CommonJS): validar-agenda.cjs aprova agenda-exemplo.json e reprova agenda-invalida.json', async () => {
+  const validadorCJS = await import('../scripts/validar-agenda.cjs');
+  const { lerJSON, validarDadosAgenda } = validadorCJS.default || validadorCJS;
+
+  const servicos = lerJSON('data/servicos.json');
+  const agendaValida = lerJSON('data/agenda-exemplo.json');
+  const agendaInvalida = lerJSON('data/agenda-invalida.json');
+
+  const errosValida = await validarDadosAgenda(agendaValida, servicos);
+  assert.equal(errosValida.length, 0);
+
+  const errosInvalida = await validarDadosAgenda(agendaInvalida, servicos);
+  assert.ok(errosInvalida.length > 0);
+  assert.ok(errosInvalida.some((msg) => msg.includes('[CONFLITO]')));
+  assert.ok(errosInvalida.some((msg) => msg.includes('Data inválida')));
+  assert.ok(errosInvalida.some((msg) => msg.includes('Horário inválido')));
+  assert.ok(errosInvalida.some((msg) => msg.includes('não existe no catálogo')));
+});
