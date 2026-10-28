@@ -90,7 +90,7 @@ O arquivo `.vscode/launch.json` disponibiliza 5 configurações de depuração a
 
 - **Evidência do coverage:**
 
-![Coverage no VS Code](docs/covarage.png)
+![Coverage no VS Code](docs/coverage.png)
 
 ---
 
