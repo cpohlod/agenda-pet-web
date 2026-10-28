@@ -238,12 +238,12 @@ function aoEnviarFormulario(evento) {
  * @param {Event} evento
  */
 async function aoDigitarCep(evento) {
-  estado.ultimoCepBuscado = '';
   const cep = evento.target.value;
   const digitos = somenteDigitos(cep);
   const statusEl = ui.$('cep-status');
 
   if (digitos.length < 8) {
+    estado.ultimoCepBuscado = '';
     ui.esconderEstado(statusEl);
     return;
   }
