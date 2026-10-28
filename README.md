@@ -88,6 +88,10 @@ O arquivo `.vscode/launch.json` disponibiliza 5 configurações de depuração a
 
 ![Depuração no VS Code](docs/depuracao.png)
 
+- **Evidência do coverage:**
+
+![Coverage no VS Code](docs/coverage.png)
+
 ---
 
 ## Projeto Node.js, Gerenciamento de Pacotes (npm) e Módulos (US11)
@@ -313,6 +317,11 @@ agenda-pet-web/
 
 6. **Depure no VS Code (US12):**
    Abra o painel **Run and Debug (`Ctrl+Shift+D`)**, escolha **"Depurar fechamento do dia (Node)"** ou **"Depurar validar-agenda (CommonJS)"** e pressione **F5**.
+
+7. **Execute a cobertura dos testes automatizados:**
+   ```bash
+   npm run test:coverage
+   ```
 
 ## Tecnologias
 
