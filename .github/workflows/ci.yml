@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Testes e Validação (Node.js)
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Executar testes automatizados
+        run: npm test
+
+      - name: Executar cobertura de testes
+        run: npm run test:coverage
+
+      - name: Validar agenda de exemplo (CommonJS)
+        run: npm run validar
+
+      - name: Executar relatório de fechamento do dia (ESM)
+        run: npm run fechamento
