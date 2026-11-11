@@ -2,6 +2,8 @@
 
 Painel web responsivo e acessível para a gestão de agendamentos diários do pet shop Patinhas & Cia, desenvolvido com HTML5 semântico, CSS3 (mobile-first com Flexbox) e JavaScript puro (ESM no front-end e módulos Node.js no back-end).
 
+[Trello](https://trello.com/invite/b/6ada82f61d99060a2e6f4c02/ATTIfaee954e98525f630a2e5c71fd542b3f4DA18552/agendapet-web)
+
 ## Funcionalidades Implementadas
 
 - **US01 — Estrutura Semântica e Acessível:** Landmarks semânticos (`header`, `nav`, `main`, `section`, `aside`, `footer`), formulário com labels associados e contrastes adequados (WCAG AA).
